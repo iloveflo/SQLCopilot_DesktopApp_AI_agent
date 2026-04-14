@@ -26,15 +26,19 @@ pub fn run() {
             }
 
             // Khởi chạy Backend Sidecar tự động
-            let sidecar_command = app.shell().sidecar("sql-copilot-backend").map_err(|e| {
-                log::error!("Failed to find sidecar: {e}");
-                e
-            })?;
-
-            let (mut rx, child) = sidecar_command.spawn().map_err(|e| {
-                log::error!("Failed to spawn sidecar: {e}");
-                e
-            })?;
+            let sidecar_command = app.shell().sidecar("sql-copilot-backend");
+            
+            let (mut rx, child) = match sidecar_command.spawn() {
+                Ok(res) => res,
+                Err(e) => {
+                    log::error!("Failed to spawn sidecar: {e}");
+                    // Trên bản Release, chúng ta báo lỗi trực tiếp để User biết
+                    return Err(Box::new(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        format!("Không thể khởi động Backend Engine (Sidecar).\nLỗi: {}\nVui lòng kiểm tra file cài đặt.", e)
+                    )));
+                }
+            };
 
             // Lưu Handle vào state của App
             let state = app.state::<SidecarState>();

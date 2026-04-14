@@ -74,8 +74,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: frontend
-          tagName: v__VERSION__ # tauri-action will replace this with version from tauri.conf.json
-          releaseName: "SQL Copilot Pro v__VERSION__"
+          tagName: ${{ github.ref_name }}
+          releaseName: "SQL Copilot Pro ${{ github.ref_name }}"
           releaseBody: "Automated Build & Release of SQL Copilot Pro AI."
           releaseDraft: true
           prerelease: false

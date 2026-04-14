@@ -41,7 +41,7 @@ def build_sidecar():
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--onefile",
-        "--name", sidecar_name, # PyInstaller tự hiểu có thêm .exe hay không
+        "--name", sidecar_name, 
         "--hidden-import", "pymysql",
         "--hidden-import", "uvicorn.logging",
         "--hidden-import", "uvicorn.loops",
@@ -54,6 +54,9 @@ def build_sidecar():
         "--collect-all", "langgraph",
         "--collect-all", "langgraph.checkpoint.sqlite",
         "--collect-all", "langchain_google_genai",
+        "--collect-submodules", "uvicorn",  # Thêm uvicorn submodules
+        "--hidden-import", "python-dotenv", # Đảm bảo dotenv được nhận diện
+        "--paths", ".",                      # Đảm bảo package app được tìm thấy
         "app/main.py"
     ]
     
@@ -61,7 +64,7 @@ def build_sidecar():
         subprocess.check_call(cmd)
         print(f"\n[OK] Packaging successful: dist/{source_filename}")
         
-        target_dir = os.path.join("..", "frontend", "src-tauri", "binaries")
+        target_dir = os.path.join("..", "frontend", "src-tauri")
         os.makedirs(target_dir, exist_ok=True)
         
         # Copy file có đuôi chuẩn sang thư mục tauri

@@ -12,7 +12,7 @@
       "allow": [
         {
           "args": [],
-          "name": "binaries/sql-copilot-backend",
+          "name": "sql-copilot-backend",
           "sidecar": true
         }
       ]
