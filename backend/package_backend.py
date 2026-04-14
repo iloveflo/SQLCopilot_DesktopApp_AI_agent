@@ -32,7 +32,7 @@ def build_sidecar():
     app_ext = ".exe" if sys.platform == "win32" else ""
     source_filename = f"{sidecar_name}{app_ext}"
     
-    print(f"--- Đang đóng gói Backend cho target: {triple} ---")
+    print(f"--- Packaging Backend for target: {triple} ---")
     
     dist_path = os.path.join(os.getcwd(), "dist")
     if os.path.exists(dist_path):
@@ -59,7 +59,7 @@ def build_sidecar():
     
     try:
         subprocess.check_call(cmd)
-        print(f"\n✅ Đóng gói thành công: dist/{source_filename}")
+        print(f"\n[OK] Packaging successful: dist/{source_filename}")
         
         target_dir = os.path.join("..", "frontend", "src-tauri", "binaries")
         os.makedirs(target_dir, exist_ok=True)
@@ -69,10 +69,10 @@ def build_sidecar():
             os.path.join("dist", source_filename), 
             os.path.join(target_dir, source_filename)
         )
-        print(f"🚀 Đã copy Sidecar sang: {target_dir}")
+        print(f"[OK] Copied Sidecar to: {target_dir}")
         
     except subprocess.CalledProcessError as e:
-        print(f"❌ Lỗi khi đóng gói: {e}")
+        print(f"[ERROR] Error during packaging: {e}")
         sys.exit(1)
         
 if __name__ == "__main__":
