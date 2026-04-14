@@ -1,0 +1,50 @@
+# --- IDE & OS ---
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# --- Python (Backend) ---
+backend/.venv/
+backend/venv/
+backend/.env
+backend/__pycache__/
+backend/*.py[cod]
+backend/*$py.class
+backend/build/
+backend/dist/
+backend/*.spec
+backend/chat_memory.sqlite3*
+backend/test.db
+backend/scratch/
+backend/.pytest_cache/
+backend/.ruff_cache/
+
+# --- Node.js (Frontend Content) ---
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/.env
+frontend/.env.*
+frontend/.eslintcache
+frontend/npm-debug.log*
+
+# --- Rust/Tauri (Frontend src-tauri) ---
+frontend/src-tauri/target/
+frontend/src-tauri/gen/
+frontend/src-tauri/chat_memory.sqlite3*
+
+# --- Tauri Binaries (Sidecars) ---
+# Bỏ qua tất cả file thực thi nhưng GIỮ LẠI cấu trúc thư mục
+frontend/src-tauri/binaries/*
+!frontend/src-tauri/binaries/.gitkeep
+
+# (Chỉ để phòng hờ nếu quy tắc trên bị lọt)
+frontend/src-tauri/binaries/*.exe
+frontend/src-tauri/binaries/sql-copilot-backend-*
+
+# --- Logs ---
+*.log
+logs/
