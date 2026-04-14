@@ -26,7 +26,7 @@ pub fn run() {
             }
 
             // Khởi chạy Backend Sidecar tự động
-            let sidecar_command = app.shell().sidecar("sql-copilot-backend");
+            let sidecar_command = app.shell().sidecar("sql-copilot-backend")?;
             
             let (mut rx, child) = match sidecar_command.spawn() {
                 Ok(res) => res,
