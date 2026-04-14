@@ -9,14 +9,27 @@ from pathlib import Path
 import os
 
 def setup_logging():
-    log_dir = Path.home() / ".sqlcopilot" / "logs"
-    log_dir.mkdir(parents=True, exist_ok=True)
+    # 1. Thử lưu tại thư mục chứa file chạy app
+    log_dir = Path(os.getcwd()) / "logs"
+    
+    # Kiểm tra quyền ghi, nếu không được (ví dụ ở C:\Program Files) thì lưu ra Desktop
+    try:
+        log_dir.mkdir(parents=True, exist_ok=True)
+        # Thử tạo một file nháp để check quyền
+        test_file = log_dir / ".setup_check"
+        test_file.touch()
+        test_file.unlink()
+    except Exception:
+        # Fallback ra Desktop cho dễ tìm
+        log_dir = Path.home() / "Desktop" / "SQLCopilot_Logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+
     log_file = log_dir / "backend.log"
     
     # Định dạng log
     log_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     
-    # Handler cho file
+    # Handler cho file (append mode)
     file_handler = logging.FileHandler(log_file, encoding="utf-8")
     file_handler.setFormatter(log_formatter)
     
@@ -31,7 +44,7 @@ def setup_logging():
     root_logger.addHandler(console_handler)
     
     logging.info(f"--- Backend Log System Started ---")
-    logging.info(f"Log file: {log_file}")
+    logging.info(f"Log path recognized: {log_file}")
 
 setup_logging()
 

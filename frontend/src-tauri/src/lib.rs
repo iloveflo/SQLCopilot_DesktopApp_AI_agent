@@ -25,21 +25,31 @@ pub fn run() {
                     .status();
             }
 
-            // 1. Kích hoạt Logging System cho cả bản Release
+            // 1. Xác định thư mục lưu Log (Ưu tiên thư mục hiện tại, fallback ra Desktop)
+            let mut log_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from(".")).join("logs");
+            
+            // Kiểm tra quyền ghi bằng cách thử tạo folder
+            if std::fs::create_dir_all(&log_dir).is_err() {
+                // Nếu không có quyền (ví dụ trong Program Files), chuyển ra Desktop
+                if let Some(desktop) = tauri::path::BaseDirectory::Desktop.resolve(&app.path()).ok() {
+                    log_dir = desktop.join("SQLCopilot_Logs");
+                }
+            }
+            let _ = std::fs::create_dir_all(&log_dir);
+
+            // 2. Kích hoạt Logging System cho cả bản Release
             app.handle().plugin(
                 tauri_plugin_log::Builder::default()
                     .targets([
                         tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
-                        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
-                            file_name: Some("app".to_string()),
-                        }),
+                        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder(log_dir.clone())),
                         tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
                     ])
                     .level(log::LevelFilter::Info)
                     .build(),
             )?;
 
-            log::info!("Tauri App starting up...");
+            log::info!("Tauri App starting up... Logs stored at: {:?}", log_dir);
 
             // 2. Tự động dọn dẹp các tiến trình backend cũ bị treo trên Windows
             #[cfg(windows)]
