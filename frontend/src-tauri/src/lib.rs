@@ -31,7 +31,7 @@ pub fn run() {
             // Kiểm tra quyền ghi bằng cách thử tạo folder
             if std::fs::create_dir_all(&log_dir).is_err() {
                 // Nếu không có quyền (ví dụ trong Program Files), chuyển ra Desktop
-                if let Some(desktop) = tauri::path::BaseDirectory::Desktop.resolve(&app.path()).ok() {
+                if let Ok(desktop) = app.path().desktop_dir() {
                     log_dir = desktop.join("SQLCopilot_Logs");
                 }
             }
@@ -42,7 +42,10 @@ pub fn run() {
                 tauri_plugin_log::Builder::default()
                     .targets([
                         tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
-                        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder(log_dir.clone())),
+                        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
+                            path: log_dir.clone(),
+                            file_name: None,
+                        }),
                         tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
                     ])
                     .level(log::LevelFilter::Info)
