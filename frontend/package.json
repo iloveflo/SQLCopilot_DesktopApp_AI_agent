@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --pretty false",
+    "tauri": "tauri",
     "tauri:package-backend": "cd ../backend && .\\.venv\\Scripts\\python.exe package_backend.py",
     "tauri:dev": "npm run tauri:package-backend && npx tauri dev",
     "tauri:build": "npm run tauri:package-backend && npx tauri build"
