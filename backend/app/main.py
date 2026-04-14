@@ -4,11 +4,36 @@ from app.core.config import settings
 from app.api.routes import database, chat, connection, sessions, admin, config_route
 import logging
 
-# Cấu hình Logging cơ bản
-logging.basicConfig(
-    level=settings.LOG_LEVEL,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+# Cấu hình Logging chuyên sâu (Console + File)
+from pathlib import Path
+import os
+
+def setup_logging():
+    log_dir = Path.home() / ".sqlcopilot" / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_file = log_dir / "backend.log"
+    
+    # Định dạng log
+    log_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    
+    # Handler cho file
+    file_handler = logging.FileHandler(log_file, encoding="utf-8")
+    file_handler.setFormatter(log_formatter)
+    
+    # Handler cho console
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(log_formatter)
+    
+    # Cấu hình root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(settings.LOG_LEVEL)
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(console_handler)
+    
+    logging.info(f"--- Backend Log System Started ---")
+    logging.info(f"Log file: {log_file}")
+
+setup_logging()
 
 # Khởi tạo App
 app = FastAPI(

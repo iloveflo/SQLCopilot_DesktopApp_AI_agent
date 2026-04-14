@@ -25,17 +25,40 @@ pub fn run() {
                     .status();
             }
 
-            // Khởi chạy Backend Sidecar tự động
+            // 1. Kích hoạt Logging System cho cả bản Release
+            app.handle().plugin(
+                tauri_plugin_log::Builder::default()
+                    .targets([
+                        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+                        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
+                            file_name: Some("app".to_string()),
+                        }),
+                        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Webview),
+                    ])
+                    .level(log::LevelFilter::Info)
+                    .build(),
+            )?;
+
+            log::info!("Tauri App starting up...");
+
+            // 2. Tự động dọn dẹp các tiến trình backend cũ bị treo trên Windows
+            #[cfg(windows)]
+            {
+                let _ = std::process::Command::new("powershell")
+                    .args(["-Command", "Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"])
+                    .status();
+            }
+
+            // 3. Khởi chạy Backend Sidecar tự động
             let sidecar_command = app.shell().sidecar("sql-copilot-backend")?;
             
             let (mut rx, child) = match sidecar_command.spawn() {
                 Ok(res) => res,
                 Err(e) => {
-                    log::error!("Failed to spawn sidecar: {e}");
-                    // Trên bản Release, chúng ta báo lỗi trực tiếp để User biết
+                    log::error!("CRITICAL: Failed to spawn sidecar: {e}");
                     return Err(Box::new(std::io::Error::new(
                         std::io::ErrorKind::Other,
-                        format!("Không thể khởi động Backend Engine (Sidecar).\nLỗi: {}\nVui lòng kiểm tra file cài đặt.", e)
+                        format!("Không thể khởi chạy Backend Engine.\nLỗi: {}\nChi tiết đã được ghi vào log.", e)
                     )));
                 }
             };
@@ -44,24 +67,25 @@ pub fn run() {
             let state = app.state::<SidecarState>();
             *state.0.lock().unwrap() = Some(child);
 
-            // Pipe logs từ sidecar ra terminal để debug
+            // 4. Pipe logs từ sidecar vào hệ thống log của Tauri
             tauri::async_runtime::spawn(async move {
+                log::info!("Backend monitoring loop started.");
                 while let Some(event) = rx.recv().await {
-                    if let tauri_plugin_shell::process::CommandEvent::Stdout(line) = event {
-                        println!("BACKEND: {}", String::from_utf8_lossy(&line).trim());
-                    } else if let tauri_plugin_shell::process::CommandEvent::Stderr(line) = event {
-                        eprintln!("BACKEND ERROR: {}", String::from_utf8_lossy(&line).trim());
+                    match event {
+                        tauri_plugin_shell::process::CommandEvent::Stdout(line) => {
+                            log::info!("BACKEND: {}", String::from_utf8_lossy(&line).trim());
+                        }
+                        tauri_plugin_shell::process::CommandEvent::Stderr(line) => {
+                            log::error!("BACKEND ERROR: {}", String::from_utf8_lossy(&line).trim());
+                        }
+                        tauri_plugin_shell::process::CommandEvent::Terminated(payload) => {
+                            log::warn!("BACKEND TERMINATED! Code: {:?}, Signal: {:?}", payload.code, payload.signal);
+                        }
+                        _ => {}
                     }
                 }
+                log::warn!("Backend monitoring loop exited.");
             });
-
-            if cfg!(debug_assertions) {
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::default()
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
-            }
             Ok(())
         })
         .on_window_event(|window, event| {
