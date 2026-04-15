@@ -7,7 +7,62 @@ on:
   workflow_dispatch:
 
 jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.filter.outputs.should_build }}
+      changed_files: ${{ steps.filter.outputs.changed_files }}
+      previous_tag: ${{ steps.filter.outputs.previous_tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect app-affecting changes since previous tag
+        id: filter
+        shell: bash
+        run: |
+          CURRENT_TAG="${GITHUB_REF_NAME}"
+          PREVIOUS_TAG="$(git describe --tags --abbrev=0 "${GITHUB_SHA}^" 2>/dev/null || true)"
+
+          echo "Current tag: ${CURRENT_TAG}"
+          echo "Previous tag: ${PREVIOUS_TAG:-<none>}"
+
+          if [ -z "${PREVIOUS_TAG}" ]; then
+            echo "No previous tag found. Build will run."
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "changed_files=Initial tagged release" >> "$GITHUB_OUTPUT"
+            echo "previous_tag=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CHANGED_FILES="$(git diff --name-only "${PREVIOUS_TAG}" "${CURRENT_TAG}")"
+          echo "Changed files since previous tag:"
+          echo "${CHANGED_FILES}"
+
+          APP_CHANGED_FILES="$(echo "${CHANGED_FILES}" | grep -E '^(backend/|frontend/|\.github/workflows/release\.yml$)' || true)"
+
+          if [ -n "${APP_CHANGED_FILES}" ]; then
+            {
+              echo "should_build=true"
+              echo "previous_tag=${PREVIOUS_TAG}"
+              echo 'changed_files<<EOF'
+              echo "${APP_CHANGED_FILES}"
+              echo 'EOF'
+            } >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo "should_build=false"
+              echo "previous_tag=${PREVIOUS_TAG}"
+              echo 'changed_files<<EOF'
+              echo "No app-affecting files changed."
+              echo 'EOF'
+            } >> "$GITHUB_OUTPUT"
+          fi
+
   release:
+    needs: detect-changes
+    if: github.event_name == 'workflow_dispatch' || needs.detect-changes.outputs.should_build == 'true'
     permissions:
       contents: write
     strategy:
@@ -18,6 +73,15 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Print release decision
+        shell: bash
+        run: |
+          echo "Previous tag: ${{ needs.detect-changes.outputs.previous_tag }}"
+          echo "Changed app files:"
+          printf '%s\n' "${{ needs.detect-changes.outputs.changed_files }}"
 
       # 1. Setup Python Environment
       - name: Setup Python
