@@ -3,7 +3,6 @@ import re
 import logging
 from langchain_core.prompts import ChatPromptTemplate
 from pydantic import BaseModel, Field
-from langchain_core.output_parsers import PydanticOutputParser
 from app.agents.llm_setup import get_llm
 
 logger = logging.getLogger(__name__)
@@ -47,7 +46,6 @@ def _extract_json_object(text: str) -> dict | None:
 # =====================================================================
 def generate_sql(question: str, schema: str, error_feedback: str = None, chat_history: str = "", plan_feedback: str = None) -> SQLGenerationOutput:
     llm = get_llm(task="sql_generation")
-    parser = PydanticOutputParser(pydantic_object=SQLGenerationOutput)
     
     plan_instruction = ""
     if plan_feedback:
@@ -60,34 +58,16 @@ Nhiệm vụ của bạn là dịch các yêu cầu tự nhiên bằng tiếng V
 {{schema}}
 
 === MỆNH LỆNH TỐI THƯỢNG (BẮT BUỘC TUÂN THỦ 100%) ===
-1. TRUNG THÀNH TUYỆT ĐỐI VỚI SCHEMA (CHỐNG ẢO GIÁC): 
-   - CHỈ ĐƯỢC PHÉP sử dụng các bảng và cột tồn tại chính xác từng ký tự trong Schema trên. 
-   - TUYỆT ĐỐI KHÔNG tự bịa ra, suy đoán, hoặc tự ý thêm bớt tiền tố/hậu tố cho tên cột/tên bảng.
-   - CẢNH BÁO: Không bao giờ được mặc định các cột phổ biến như `id`, `name`, `status` luôn tồn tại. (Ví dụ: Nếu schema ghi là `title`, bắt buộc dùng `title`, tuyệt đối không tự "dịch" thành `name` hay `ten_san_pham`).
+1. TRUNG THÀNH TUYỆT ĐỐI VỚI SCHEMA (CHỐNG ẢO GIÁC): BẢT BUỘC chỉ dùng cột/bảng có thật. KHÔNG tự bịa.
+2. QUY TẮC KẾT NỐI (JOIN): Bắt buộc nối đúng cột khóa ngoại đã định nghĩa.
+3. ĐỊNH DẠNG TÊN BẢNG: (Chế độ Multi-Database) Bắt buộc phải có tiền tố Database. Ví dụ: `ten_db`.`ten_bang`.
+4. XỬ LÝ LỖI (SELF-CORRECTION): {{error_feedback}}. Nếu có lỗi, PHẢI đối chiếu lại và sửa.
 
-2. QUY TẮC KẾT NỐI (JOIN) CƠ HỌC & NGHIÊM NGẶT: 
-   - Phải phân tích kỹ định nghĩa Khóa chính (PK) và Khóa ngoại (FK) trực tiếp từ Schema trước khi JOIN.
-   - CẢNH BÁO: Không được tự động thêm hậu tố `_id` vào tên một bảng để ép nó làm khóa chính. (Ví dụ: Đừng mặc định bảng `KhachHang` thì khóa là `khach_hang_id`, nó có thể chỉ là `id` hoặc `ma_kh`). Bắt buộc nối đúng cột theo quan hệ thực tế được định nghĩa.
-
-3. ĐỊNH DẠNG TÊN BẢNG (PREFIX RULE BẮT BUỘC):
-   - Chế độ "Multi-Database Analysis Mode": Tên bảng BẮT BUỘC phải có tiền tố là tên database chứa nó. (Ví dụ chuẩn: SELECT * FROM `ten_database_a`.`ten_bang_b`). KHÔNG ĐƯỢC BỎ TIỀN TỐ.
-   - Chế độ "Single-Database Mode": Dùng tên bảng gốc, KHÔNG CẦN tiền tố.
-
-4. XỬ LÝ LỖI (SELF-CORRECTION CHUYÊN SÂU): 
-   - Thông báo lỗi từ hệ thống (nếu có): {{error_feedback}}
-   - Nếu có lỗi, bạn PHẢI đối chiếu lại nguyên nhân với Schema hiện tại và viết lại câu lệnh mới. Tuyệt đối không nhắm mắt lặp lại câu SQL đã gây lỗi.
-
-5. CÚ PHÁP TIÊU CHUẨN: 
-   - Trả về mã SQL tương thích chuẩn mực với Hệ quản trị CSDL được cung cấp. 
-   - Riêng với các truy vấn về siêu dữ liệu (đếm số bảng, liệt kê các cột...), sử dụng cú pháp tra cứu chuẩn (như truy vấn vào `information_schema`).
-
-=== ĐỊNH DẠNG ĐẦU RA (OUTPUT FORMAT) ===
-{{format_instructions}}
-
-LƯU Ý KỸ THUẬT QUAN TRỌNG VỀ JSON:
-- KHÔNG sử dụng ký tự escape ngược (\\) cho chuỗi bên trong JSON. 
-- ĐÚNG: "query": "SELECT * FROM users WHERE name = 'John'"
-- SAI: "query": "SELECT * FROM users WHERE name = \\'John\\'"
+=== TỐI ƯU HÓA HIỆU NĂNG TỐC ĐỘ (ĐỌC KỸ) ===
+ĐỂ TỐI ƯU TỐC ĐỘ PHẢN HỒI, BẠN PHẢI TUÂN THỦ CÁC LUẬT IM LẶNG:
+- BẠN BẮT BUỘC CHỈ TRẢ VỀ DUY NHẤT MỘT KHỐI MÃ ` ```sql ... ``` ` CHỨA CÂU LỆNH SQL.
+- NGHIÊM CẤM TẠO CẤU TRÚC JSON.
+- NGHIÊM CẤM GIẢI THÍCH, KHÔNG CHÀO HỎI, KHÔNG TRÌNH BÀY DÀI DÒNG DƯỚI MỌI HÌNH THỨC. Chỉ xuất Code!
 """
     
     prompt = ChatPromptTemplate.from_messages([
@@ -100,42 +80,26 @@ LƯU Ý KỸ THUẬT QUAN TRỌNG VỀ JSON:
         "schema": schema,
         "question": question,
         "error_feedback": error_feedback or "Không có",
-        "chat_history": chat_history or "Không có lịch sử",
-        "format_instructions": parser.get_format_instructions()
+        "chat_history": chat_history or "Không có lịch sử"
     }
 
     try:
         raw_response = llm_chain.invoke(inputs)
-        # BƯỚC 1 (ĐÃ VÁ): Lọc nội dung qua màng lọc Gemma 4 trước khi gán vào raw_text
         raw_text = _extract_gemma_content(getattr(raw_response, "content", raw_response))
     except Exception as e:
         logger.error(f"Lỗi khi kết nối với LLM Local: {e}")
         return SQLGenerationOutput(query="", explanation="Lỗi kết nối tới mô hình AI.")
 
-    # BƯỚC 2: Thử phân tích JSON bằng Pydantic Parser chuẩn
-    try:
-        return parser.parse(raw_text)
-    except Exception as e:
-        logger.warning(f"Langchain Parser thất bại, tiến hành lọc thủ công cấp độ 3...")
-        
-        # BƯỚC 3: Fallback - Tự bóc tách JSON thủ công
-        json_obj = _extract_json_object(raw_text)
-        if json_obj is not None:
-            query = json_obj.get("query", json_obj.get("sql", json_obj.get("sql_query", "")))
-            if query.strip(): 
-                explanation = json_obj.get("explanation", "Dưới đây là truy vấn SQL tôi vừa tạo.")
-                return SQLGenerationOutput(query=query.strip(), explanation=explanation)
-            
-        # BƯỚC 4: Fallback cuối cùng - Bỏ qua mọi thể loại JSON, dùng Regex Moi móc SQL
-        if "SELECT" in raw_text.upper():
-            sql_match = re.search(r"```sql\n(.*?)\n```", raw_text, re.DOTALL)
-            if sql_match:
-                return SQLGenerationOutput(query=sql_match.group(1).strip(), explanation="Đã trích xuất SQL từ Markdown.")
-            
-            sql_match_plain = re.search(r"(SELECT.*?)(?:\n|\s*$)", raw_text, re.IGNORECASE | re.DOTALL)
-            if sql_match_plain:
-                return SQLGenerationOutput(query=sql_match_plain.group(1).strip(), explanation="Đã trích xuất SQL từ văn bản thuần.")
-        
-        # BƯỚC 5: Nếu không moi được SQL, trả về lỗi chi tiết để Debug
-        logger.error(f"LLM trả về định dạng không thể xử lý: {raw_text}")
-        return SQLGenerationOutput(query="", explanation=f"Lỗi định dạng: Mô hình trả về nội dung không phải SQL. Nội dung: {raw_text[:200]}...")
+    # BƯỚC 2: Rút trích trực tiếp khối mã Markdown SQL thay vì parse JSON chậm chạp
+    sql_match = re.search(r"```(?:sql|sqlite)?\n(.*?)\n```", raw_text, re.IGNORECASE | re.DOTALL)
+    if sql_match:
+        return SQLGenerationOutput(query=sql_match.group(1).strip(), explanation="Đã sinh SQL Thành Công.")
+    
+    # Fallback mài tìm SELECT
+    if "SELECT" in raw_text.upper():
+        sql_match_plain = re.search(r"(SELECT.*?)(?:\n\n|\s*$)", raw_text, re.IGNORECASE | re.DOTALL)
+        if sql_match_plain:
+            return SQLGenerationOutput(query=sql_match_plain.group(1).strip(), explanation="Trích xuất SQL thuần.")
+
+    logger.error(f"Lỗi định dạng SQL Output: {raw_text}")
+    return SQLGenerationOutput(query="", explanation=f"Không thể định vị được câu lệnh SQL. Phản hồi: {raw_text[:200]}")

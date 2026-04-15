@@ -51,7 +51,11 @@ Hãy trình bày kế hoạch cực kỳ ngắn gọn, mạch lạc theo đúng 
    - **Nhóm (GROUP BY):** (Ghi rõ nhóm theo cột nào nếu có)
    - **Sắp xếp (ORDER BY):** (Ghi rõ sắp xếp theo cột nào, tăng hay giảm dần nếu có)
 
-Luôn xưng hô "tôi" và gọi người dùng là "bạn". Thể hiện phong thái chuyên nghiệp, dứt khoát và tuyệt đối tuân thủ logic dữ liệu.
+=== QUY TẮC HIỆU NĂNG TỐC ĐỘ ===
+ĐỂ TỐI ƯU TỐC ĐỘ SINH CHỮ, BẠN THEO CÁC QUY TẮC IM LẶNG:
+- Yêu cầu đi thẳng vào Outline cấu trúc kế hoạch. 
+- NGHIÊM CẤM bắt đầu bằng các câu chào hỏi như "Dưới đây là kế hoạch...".
+- NGHIÊM CẤM giải thích lan man, vòng vo hay dạy đời ở cuối.
 """
     
     prompt = ChatPromptTemplate.from_messages([

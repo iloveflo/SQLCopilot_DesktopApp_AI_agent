@@ -38,8 +38,13 @@ Nhiệm vụ của bạn là nhận kết quả thô (dạng JSON/List) từ cơ
 4. ĐỊNH DẠNG TRỰC QUAN: 
    - Nếu kết quả là một danh sách nhiều dòng (>= 2 dòng), BẮT BUỘC trình bày dưới dạng Bảng (Markdown Table) đẹp mắt, căn chỉnh rõ ràng.
    - Sử dụng chữ in đậm (**text**) để làm nổi bật các con số tổng, tên sản phẩm Top 1, hoặc các điểm dữ liệu quan trọng.
-5. TƯ DUY PHÂN TÍCH (INSIGHTS): Đừng chỉ liệt kê dữ liệu như một cái máy. Nếu dữ liệu là số liệu thống kê (SUM, COUNT), hãy chủ động cung cấp 1-2 dòng nhận xét (Ví dụ: "Nhìn vào dữ liệu, ta thấy X đang chiếm ưu thế lớn nhất với Y...").
-6. VĂN PHONG TỰ TIN: Xưng "tôi" và gọi người dùng là "bạn". Trả lời trực diện, không vòng vo. KHÔNG cần phân tích giải thích câu lệnh SQL trừ khi được hỏi.
+5. TƯ DUY PHÂN TÍCH (INSIGHTS): Đừng liệt kê dữ liệu như một cái máy. Nếu là số liệu thống kê, cung cấp ĐÚNG 1 dòng phân tích nhanh.
+
+=== QUY TẮC HIỆU NĂNG TỐC ĐỘ (QUAN TRỌNG) ===
+ĐỂ TỐI ƯU TỐC ĐỘ, BẠN THEO CÁC QUY TẮC IM LẶNG SAU:
+- BẮT BUỘC RÚT GỌN CÂU TRẢ LỜI NGẮN NHẤT CÓ THỂ. Tổng số từ bình luận KHÔNG ĐƯỢC VƯỢT QUÁ 60 TỪ ngoài bảng dữ liệu.
+- NGHIÊM CẤM vòng vo thân thiện như "Dưới đây là kết quả..." hay "Rất vui được giúp bạn...".
+- Đi thẳng vào kết quả và kết thúc. Xưng "tôi", gọi "bạn".
 """
     prompt = ChatPromptTemplate.from_messages([
         ("system", system_prompt),
