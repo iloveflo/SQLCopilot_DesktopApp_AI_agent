@@ -120,8 +120,17 @@ jobs:
         shell: bash
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          cd frontend
-          node scripts/sync-version.mjs "$VERSION"
+          echo "Setting version to $VERSION. Patching Tauri config files..."
+          TAURI_CONF="frontend/src-tauri/tauri.conf.json"
+          CARGO_TOML="frontend/src-tauri/Cargo.toml"
+          # Ensure tauri.conf.json is patched
+          if command -v jq &> /dev/null; then
+            jq ".version = \"$VERSION\"" "$TAURI_CONF" > "${TAURI_CONF}.tmp" && mv "${TAURI_CONF}.tmp" "$TAURI_CONF"
+          else
+            sed -i -E "s/\"version\": \"[^\"]+\"/\"version\": \"$VERSION\"/" "$TAURI_CONF"
+          fi
+          # Ensure Cargo.toml is patched
+          sed -i -E "s/^version = \"[^\"]+\"/version = \"$VERSION\"/" "$CARGO_TOML"
 
       # 4. Setup Rust for Tauri
       - name: Setup Rust

@@ -1,12 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { api } from '../api/sqlCopilot'
 import { ApiError } from '../api/http'
 import type { AdminUserRow } from '../types/api'
 
-type Props = { onClose: () => void }
+type Props = {
+  onClose: () => void
+  onConfigSaved?: () => void
+  defaultTab?: 'users' | 'command' | 'config'
+}
 
-export function AdminPanel({ onClose }: Props) {
-  const [tab, setTab] = useState<'users' | 'command' | 'config'>('users')
+export function AdminPanel({ onClose, onConfigSaved, defaultTab = 'users' }: Props) {
+  const [tab, setTab] = useState<'users' | 'command' | 'config'>(defaultTab)
   const [users, setUsers] = useState<AdminUserRow[] | null>(null)
   const [usersErr, setUsersErr] = useState<string | null>(null)
   const [loadingUsers, setLoadingUsers] = useState(false)
@@ -30,6 +34,13 @@ export function AdminPanel({ onClose }: Props) {
     }
   }
 
+  // Auto-load config when tab is set to config
+  useEffect(() => {
+    if (tab === 'config') {
+      void loadConfig()
+    }
+  }, [tab])
+
   const handleSaveConfig = async () => {
     if (!apiKey.trim()) return
     setSaveLoading(true)
@@ -39,6 +50,7 @@ export function AdminPanel({ onClose }: Props) {
       setSaveMsg({ type: 'ok', text: 'Đã lưu cấu hình thành công!' })
       setApiKey('')
       await loadConfig()
+      onConfigSaved?.()
     } catch (e) {
       setSaveMsg({ type: 'err', text: e instanceof ApiError ? e.message : 'Lỗi khi lưu' })
     } finally {
@@ -126,10 +138,7 @@ export function AdminPanel({ onClose }: Props) {
           <button
             type="button"
             className={tab === 'config' ? 'active' : ''}
-            onClick={() => {
-              setTab('config')
-              void loadConfig()
-            }}
+            onClick={() => setTab('config')}
           >
             Cấu hình
           </button>

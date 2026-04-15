@@ -39,6 +39,8 @@ export default function App() {
   const [banner, setBanner] = useState<string | null>(null)
   const [thinkingStep, setThinkingStep] = useState<string | null>(null)
   const [connectNonce, setConnectNonce] = useState(0)
+  const [isApiKeySet, setIsApiKeySet] = useState<boolean | null>(null)
+  const [adminDefaultTab, setAdminDefaultTab] = useState<'users' | 'command' | 'config'>('users')
 
   const [leftWidth, setLeftWidth] = useState(240)
   const [rightWidth, setRightWidth] = useState(350)
@@ -160,6 +162,7 @@ export default function App() {
       setMessages([])
       setSchema(null)
       setPendingApproval(null)
+      setIsApiKeySet(null)
       return
     }
 
@@ -168,6 +171,15 @@ export default function App() {
       const st = await api.connectionStatus()
       if (cancelled) return
       setStatus(st)
+
+      // Fetch config to check API key status
+      try {
+        const cfg = await api.getConfig()
+        if (!cancelled) setIsApiKeySet(cfg.is_key_set)
+      } catch {
+        /* ignore */
+      }
+
       const dbs = st.active_databases?.length ? st.active_databases : undefined
       const list = await refreshSessions()
       if (cancelled) return
@@ -413,7 +425,10 @@ export default function App() {
                 Tải lược đồ
               </button>
               {status?.is_admin ? (
-                <button type="button" className="btn secondary" onClick={() => setShowAdmin(true)}>
+                <button type="button" className="btn secondary" onClick={() => {
+                  setAdminDefaultTab('users')
+                  setShowAdmin(true)
+                }}>
                   Quản trị
                 </button>
               ) : null}
@@ -461,6 +476,11 @@ export default function App() {
           pendingApproval={pendingApproval}
           busy={chatBusy}
           thinkingStep={thinkingStep}
+          isApiKeySet={isApiKeySet}
+          onOpenAdminPanel={() => {
+            setAdminDefaultTab('config')
+            setShowAdmin(true)
+          }}
           onSend={(q) => void handleSend(q)}
           onApprovePlan={(fb) => void handleApprovePlan(fb)}
           onCancelApproval={() => setPendingApproval(null)}
@@ -497,7 +517,7 @@ export default function App() {
         }}
       />
 
-      {showAdmin ? <AdminPanel onClose={() => setShowAdmin(false)} /> : null}
+      {showAdmin ? <AdminPanel onClose={() => setShowAdmin(false)} defaultTab={adminDefaultTab} onConfigSaved={() => setIsApiKeySet(true)} /> : null}
     </div>
   )
 }

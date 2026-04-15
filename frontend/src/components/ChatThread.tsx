@@ -10,6 +10,8 @@ type Props = {
   pendingApproval: PendingApproval | null
   busy: boolean
   thinkingStep?: string | null
+  isApiKeySet?: boolean | null
+  onOpenAdminPanel?: () => void
   onSend: (query: string) => void
   onApprovePlan: (planFeedback: string) => void
   onCancelApproval: () => void
@@ -20,12 +22,16 @@ export function ChatThread({
   pendingApproval,
   busy,
   thinkingStep,
+  isApiKeySet,
+  onOpenAdminPanel,
   onSend,
   onApprovePlan,
   onCancelApproval,
 }: Props) {
   const [draft, setDraft] = useState('')
   const [feedback, setFeedback] = useState('')
+  const [showInstructions, setShowInstructions] = useState(false)
+
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -43,6 +49,32 @@ export function ChatThread({
   return (
     <section className="chat-thread">
       <div className="chat-messages">
+        {isApiKeySet === false && messages.length === 0 ? (
+          <div className="api-key-onboarding" style={{ margin: '2rem auto', textAlign: 'center', maxWidth: 500, padding: '1rem' }}>
+            <h3 style={{ color: '#ffcc00', marginBottom: '1rem' }}>⚠️ Hiện tại chưa cấu hình API key</h3>
+            {!showInstructions ? (
+              <button type="button" className="btn secondary" style={{ fontSize: '1.1rem', padding: '0.5rem 1rem' }} onClick={() => setShowInstructions(true)}>
+                Hướng dẫn lấy API key
+              </button>
+            ) : (
+              <div className="instructions-pane bubble assistant" style={{ textAlign: 'left', marginTop: '1rem' }}>
+                <h4 style={{ marginBottom: '1rem' }}>Cách lấy và nạp API Key Google Gemini:</h4>
+                <ol style={{ paddingLeft: '1.5rem', lineHeight: '1.6', fontSize: '0.95rem' }}>
+                  <li>Truy cập trang <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" style={{ color: '#4da3ff' }}>Google AI Studio</a> và đăng nhập bằng tài khoản Google.</li>
+                  <li>Nhấp vào nút <strong>Create API key</strong> và Copy đoạn mã dài vừa tạo.</li>
+                  <li>Nhấp vào nút bấm bên dưới để mở giao diện quản trị của ứng dụng.</li>
+                  <li>Dán mã vừa copy vào ô <strong>Google Gemini API Key</strong> và ấn Lưu.</li>
+                </ol>
+                <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+                  <button type="button" className="btn primary" onClick={onOpenAdminPanel}>
+                    Mở Cấu hình App ngay
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : null}
+
         {messages.map((m, i) => (
           <article key={i} className={`bubble ${m.role === 'user' ? 'user' : 'assistant'}`}>
             <div className="bubble-content">{m.content}</div>
@@ -97,14 +129,14 @@ export function ChatThread({
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder={pendingApproval ? 'Hoàn tất duyệt kế hoạch ở trên…' : 'Hỏi bằng tiếng Việt…'}
-          disabled={busy || !!pendingApproval}
+          placeholder={isApiKeySet === false ? 'Vui lòng nạp API Key trước khi sử dụng...' : (pendingApproval ? 'Hoàn tất duyệt kế hoạch ở trên…' : 'Hỏi bằng tiếng Việt…')}
+          disabled={busy || !!pendingApproval || isApiKeySet === false}
           minLength={2}
         />
         <button
           type="submit"
           className="btn primary"
-          disabled={busy || !!pendingApproval || draft.trim().length < 2}
+          disabled={busy || !!pendingApproval || draft.trim().length < 2 || isApiKeySet === false}
         >
           Gửi
         </button>
