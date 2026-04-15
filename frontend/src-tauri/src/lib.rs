@@ -14,8 +14,8 @@ pub fn run() {
             // Dọn dẹp cổng trước khi khởi động
             #[cfg(windows)]
             {
-                let _ = std::process::Command::new("cmd")
-                    .args(["/C", "FOR /F \"tokens=5\" %P IN ('netstat -a -n -o ^| findstr :8000') DO TaskKill.exe /PID %P /T /F"])
+                let _ = std::process::Command::new("powershell")
+                    .args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", "Stop-Process -Id (Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue).OwningProcess -Force -ErrorAction SilentlyContinue"])
                     .status();
             }
             #[cfg(not(windows))]
@@ -57,8 +57,8 @@ pub fn run() {
             // 2. Tự động dọn dẹp các tiến trình backend cũ bị treo trên Windows
             #[cfg(windows)]
             {
-                let _ = std::process::Command::new("cmd")
-                    .args(["/C", "FOR /F \"tokens=5\" %P IN ('netstat -a -n -o ^| findstr :8000') DO TaskKill.exe /PID %P /T /F"])
+                let _ = std::process::Command::new("powershell")
+                    .args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", "Stop-Process -Id (Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue).OwningProcess -Force -ErrorAction SilentlyContinue"])
                     .status();
             }
 
@@ -116,8 +116,8 @@ pub fn run() {
                     // Kill bổ sung theo cổng để chắc chắn (đặc biệt quan trọng trên Windows nếu sidecar spawn sub-process)
                     #[cfg(windows)]
                     {
-                        let _ = std::process::Command::new("cmd")
-                            .args(["/C", "FOR /F \"tokens=5\" %P IN ('netstat -a -n -o ^| findstr :8000') DO TaskKill.exe /PID %P /T /F"])
+                        let _ = std::process::Command::new("powershell")
+                            .args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", "Stop-Process -Id (Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue).OwningProcess -Force -ErrorAction SilentlyContinue"])
                             .spawn();
                     }
                     #[cfg(not(windows))]
