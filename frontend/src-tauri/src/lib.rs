@@ -14,8 +14,8 @@ pub fn run() {
             // Dọn dẹp cổng trước khi khởi động
             #[cfg(windows)]
             {
-                let _ = std::process::Command::new("powershell")
-                    .args(["-Command", "Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"])
+                let _ = std::process::Command::new("cmd")
+                    .args(["/C", "FOR /F \"tokens=5\" %P IN ('netstat -a -n -o ^| findstr :8000') DO TaskKill.exe /PID %P /T /F"])
                     .status();
             }
             #[cfg(not(windows))]
@@ -57,8 +57,8 @@ pub fn run() {
             // 2. Tự động dọn dẹp các tiến trình backend cũ bị treo trên Windows
             #[cfg(windows)]
             {
-                let _ = std::process::Command::new("powershell")
-                    .args(["-Command", "Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"])
+                let _ = std::process::Command::new("cmd")
+                    .args(["/C", "FOR /F \"tokens=5\" %P IN ('netstat -a -n -o ^| findstr :8000') DO TaskKill.exe /PID %P /T /F"])
                     .status();
             }
 
@@ -116,9 +116,9 @@ pub fn run() {
                     // Kill bổ sung theo cổng để chắc chắn (đặc biệt quan trọng trên Windows nếu sidecar spawn sub-process)
                     #[cfg(windows)]
                     {
-                        let _ = std::process::Command::new("powershell")
-                            .args(["-Command", "Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"])
-                            .status();
+                        let _ = std::process::Command::new("cmd")
+                            .args(["/C", "FOR /F \"tokens=5\" %P IN ('netstat -a -n -o ^| findstr :8000') DO TaskKill.exe /PID %P /T /F"])
+                            .spawn();
                     }
                     #[cfg(not(windows))]
                     {

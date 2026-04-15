@@ -2,12 +2,12 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from app.core.config import settings
 
 MODEL_TASK_MAP = {
-    "planner": "gemma-4-31b-it",        
-    "sql_generation": "gemma-4-31b-it", 
-    "interpreter": "gemma-4-31b-it",  
-    "visualizer": "gemma-4-31b-it",   
-    "admin": "gemma-4-31b-it",          
-    "default": "gemma-4-31b-it",
+    "planner": "gemini-3.1-flash-lite-preview",        
+    "sql_generation": "gemini-3.1-flash-lite-preview", 
+    "interpreter": "gemini-3.1-flash-lite-preview",  
+    "visualizer": "gemini-3.1-flash-lite-preview",   
+    "admin": "gemini-3.1-flash-lite-preview",          
+    "default": "gemini-3.1-flash-lite-preview",
 }
 
 DEFAULT_MAX_TOKENS = {
