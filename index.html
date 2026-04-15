@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SQL Copilot Pro AI</title>
+    <meta
+      name="description"
+      content="SQL Copilot Pro AI là desktop app giúp bạn hỏi dữ liệu bằng tiếng Việt, tự sinh SQL, trực quan hóa kết quả và làm việc với MySQL nhanh hơn."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./index.css" />
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="topbar">
+        <a class="brand" href="#top">
+          <span class="brand-mark">SQL</span>
+          <span class="brand-copy">
+            <strong>SQL Copilot Pro</strong>
+            <small>Desktop AI for data teams</small>
+          </span>
+        </a>
+        <nav class="topnav">
+          <a href="#features">Tính năng</a>
+          <a href="#downloads">Tải xuống</a>
+          <a href="#flow">Quy trình</a>
+          <a
+            href="https://github.com/iloveflo/SQLCopilot_DesktopApp_AI_agent/releases"
+            target="_blank"
+            rel="noreferrer"
+          >
+            GitHub Release
+          </a>
+        </nav>
+      </header>
+
+      <main id="top">
+        <section class="hero">
+          <div class="hero-copy">
+            <p class="eyebrow">SQL Copilot Pro AI</p>
+            <h1>Biến câu hỏi tiếng Việt thành truy vấn SQL có kiểm soát.</h1>
+            <p class="hero-lead">
+              Một desktop app dành cho phân tích dữ liệu: kết nối MySQL, đọc schema,
+              đề xuất kế hoạch truy vấn, sinh SQL, thực thi an toàn và dựng biểu đồ
+              chỉ trong một luồng làm việc mạch lạc.
+            </p>
+
+            <div class="hero-actions">
+              <a class="btn btn-primary" href="#downloads">Tải bản mới nhất</a>
+              <a
+                class="btn btn-secondary"
+                href="https://github.com/iloveflo/SQLCopilot_DesktopApp_AI_agent"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Xem mã nguồn
+              </a>
+            </div>
+
+            <div class="hero-metrics">
+              <article>
+                <strong>HITL</strong>
+                <span>Duyệt plan trước khi chạy SQL</span>
+              </article>
+              <article>
+                <strong>Cross-DB</strong>
+                <span>Phân tích nhiều database cùng lúc</span>
+              </article>
+              <article>
+                <strong>Desktop</strong>
+                <span>Windows, macOS, Linux</span>
+              </article>
+            </div>
+          </div>
+
+          <div class="hero-panel">
+            <div class="mock-window">
+              <div class="mock-toolbar">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <div class="mock-grid">
+                <aside class="mock-sidebar">
+                  <p class="mock-label">Sessions</p>
+                  <div class="mock-chip active">Doanh thu theo tháng</div>
+                  <div class="mock-chip">Top khách hàng VIP</div>
+                  <div class="mock-chip">Tỷ lệ churn quý này</div>
+                </aside>
+                <section class="mock-chat">
+                  <div class="mock-bubble user">
+                    Hãy so sánh doanh thu giữa 2 database bán lẻ trong 6 tháng gần nhất.
+                  </div>
+                  <div class="mock-bubble ai">
+                    Tôi đã đọc schema, lập kế hoạch query và chuẩn bị biểu đồ xu hướng.
+                  </div>
+                  <div class="mock-sql">
+                    <span>SELECT</span> month, revenue, region <span>FROM</span> retail_a.orders
+                    <span>UNION ALL</span> ...
+                  </div>
+                  <div class="mock-chart">
+                    <div class="bar tall"></div>
+                    <div class="bar mid"></div>
+                    <div class="bar low"></div>
+                    <div class="bar taller"></div>
+                    <div class="bar mid"></div>
+                    <div class="bar high"></div>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="feature-section" id="features">
+          <div class="section-heading">
+            <p class="eyebrow">Điểm nổi bật</p>
+            <h2>Không chỉ là chatbot SQL. Đây là một workflow dữ liệu hoàn chỉnh.</h2>
+          </div>
+
+          <div class="feature-grid">
+            <article class="feature-card">
+              <h3>Natural Language to SQL</h3>
+              <p>
+                Đặt câu hỏi bằng tiếng Việt, để hệ thống đọc schema, hiểu ngữ cảnh và
+                tạo truy vấn phù hợp thay vì bắt bạn viết SQL từ đầu.
+              </p>
+            </article>
+            <article class="feature-card">
+              <h3>Plan Approval</h3>
+              <p>
+                Mỗi truy vấn có thể đi qua bước xem trước kế hoạch, giúp giảm rủi ro
+                chạy sai ý hoặc thao tác nhầm trên dữ liệu thực tế.
+              </p>
+            </article>
+            <article class="feature-card">
+              <h3>Cross-Database Context</h3>
+              <p>
+                Chọn nhiều database trên cùng một server MySQL để AI có thể suy luận
+                và truy vấn xuyên nguồn dữ liệu.
+              </p>
+            </article>
+            <article class="feature-card">
+              <h3>Session Memory</h3>
+              <p>
+                Mỗi cuộc hội thoại được lưu lại kèm SQL, dữ liệu thô và cấu hình biểu đồ
+                để bạn quay lại đúng mạch làm việc trước đó.
+              </p>
+            </article>
+            <article class="feature-card">
+              <h3>Visual Output</h3>
+              <p>
+                Khi phù hợp, app tự sinh biểu đồ để biến kết quả truy vấn thành tín hiệu
+                dễ đọc hơn cho báo cáo và phân tích nhanh.
+              </p>
+            </article>
+            <article class="feature-card">
+              <h3>Desktop Native Packaging</h3>
+              <p>
+                Gói sẵn cho Windows, macOS và Linux, không cần dựng backend riêng trong
+                luồng sử dụng cuối cùng.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section class="downloads-section" id="downloads">
+          <div class="section-heading">
+            <p class="eyebrow">Tải xuống</p>
+            <h2>Chọn đúng bản cài đặt cho từng phiên bản và nền tảng.</h2>
+            <p class="section-note">
+              Mỗi phiên bản hiển thị đầy đủ 7 gói cài đặt thực tế từ GitHub Release. Bấm vào
+              từng mục để tải trực tiếp file tương ứng.
+            </p>
+          </div>
+
+          <div class="release-banner" id="releaseBanner">
+            <div>
+              <strong id="releaseVersion">Đang đồng bộ version mới nhất...</strong>
+              <p id="releaseMeta">Trang sẽ chỉ hiển thị 7 file của bản phát hành mới nhất.</p>
+            </div>
+            <a
+              class="inline-link"
+              id="allReleasesLink"
+              href="https://github.com/iloveflo/SQLCopilot_DesktopApp_AI_agent/releases"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Xem tất cả release
+            </a>
+          </div>
+
+          <div class="versions-list" id="versionsList"></div>
+        </section>
+
+        <section class="flow-section" id="flow">
+          <div class="section-heading">
+            <p class="eyebrow">Cách hoạt động</p>
+            <h2>Một pipeline gọn, rõ và có kiểm soát.</h2>
+          </div>
+
+          <div class="flow-timeline">
+            <article>
+              <span>01</span>
+              <h3>Kết nối và chọn database</h3>
+              <p>Chọn một hoặc nhiều database MySQL làm ngữ cảnh phân tích.</p>
+            </article>
+            <article>
+              <span>02</span>
+              <h3>AI đọc schema</h3>
+              <p>Hệ thống lấy schema liên quan để giảm đoán mò khi sinh truy vấn.</p>
+            </article>
+            <article>
+              <span>03</span>
+              <h3>Duyệt kế hoạch</h3>
+              <p>Người dùng xem plan và có thể điều chỉnh trước khi chuyển sang SQL.</p>
+            </article>
+            <article>
+              <span>04</span>
+              <h3>Nhận kết quả và biểu đồ</h3>
+              <p>App trả về answer, SQL, dữ liệu thô và trực quan hóa nếu phù hợp.</p>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./index.js"></script>
+  </body>
+</html>

@@ -149,6 +149,6 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: "SQL Copilot Pro ${{ github.ref_name }}"
           releaseBody: "Automated Build & Release of SQL Copilot Pro AI."
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.platform == 'windows-latest' && '--target x86_64-pc-windows-msvc' || '' }}
