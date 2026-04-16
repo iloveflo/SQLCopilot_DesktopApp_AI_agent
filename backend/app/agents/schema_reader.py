@@ -63,8 +63,14 @@ Danh sách bảng: {', '.join(table_names)}
 Câu hỏi: {question}
 """
         response = llm.invoke(selector_prompt)
-        selected_tables_text = getattr(response, "content", str(response))
-        selected_tables = [t.strip() for t in selected_tables_text.split(",")]
+        # Sửa lỗi: LangChain có thể trả về content dạng list nếu model output phức tạp
+        content = response.content
+        if isinstance(content, list):
+            selected_tables_text = "".join([part.get("text", "") if isinstance(part, dict) else str(part) for part in content])
+        else:
+            selected_tables_text = str(content)
+            
+        selected_tables = [t.strip() for t in selected_tables_text.split(",") if t.strip()]
         
         # Lọc schema chỉ lấy các bảng đã chọn
         filtered_lines = []
