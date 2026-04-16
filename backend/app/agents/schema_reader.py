@@ -1,7 +1,7 @@
 import re
 from app.db.metadata import get_multi_db_schema_context
 
-MAX_SCHEMA_CHARS = 7000
+MAX_SCHEMA_CHARS = 12000
 
 
 def _truncate_text(text: str, max_chars: int) -> str:
@@ -36,15 +36,15 @@ def _summarize_schema(schema_text: str) -> str:
         return summary_text
 
     table_names = [line for line in summary_lines if line.startswith("Table:")]
-    fallback = "\n".join(summary_lines[:3] + table_names[:20])
+    fallback = "\n".join(summary_lines[:3] + table_names[:25]) # Tăng số lượng bảng fallback
     return _truncate_text(fallback, MAX_SCHEMA_CHARS)
 
 
 def get_optimized_schema(question: str = "") -> str:
-    """Trả về schema rút gọn, ưu tiên các bảng/columns liên quan bằng RAG Selection (Pillar 2)."""
+    """Trả về schema rút gọn. Ưu tiên xử lý tức thì bằng RegEx để tối ưu tốc độ."""
     schema_text = get_multi_db_schema_context()
     
-    # 1. Nếu schema nhỏ, trả về luôn để tiết kiệm token/time
+    # 1. Nếu schema nhỏ hoặc vừa (~12k chars), trả về luôn (Tốc độ 0.01s)
     if len(schema_text) <= MAX_SCHEMA_CHARS:
         return schema_text
 
