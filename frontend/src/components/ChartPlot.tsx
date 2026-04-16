@@ -20,13 +20,26 @@ function isPlotlyConfig(v: unknown): v is PlotlyChartConfig {
 export function ChartPlot({ config }: { config: unknown }) {
   if (!isPlotlyConfig(config)) return null
   
+  // Logic xử lý khi click vào cột/mảng trên biểu đồ (Drill-down)
+  const handleChartClick = (data: any) => {
+    if (!data.points || data.points.length === 0) return;
+    const point = data.points[0];
+    const label = point.label || point.x; // Tùy loại biểu đồ Pie hay Bar
+    
+    // Phát sự kiện Drill-down cho hệ thống (được ChatThread bắt lấy)
+    const drillDownEvent = new CustomEvent('app:drilldown', {
+      detail: { label, value: point.value || point.y }
+    });
+    window.dispatchEvent(drillDownEvent);
+  };
+
   // 1. Tùy chỉnh màu sắc cho Data (Tô màu các cột)
   const styledData = (config.data as Data[]).map(trace => ({
     ...trace,
     marker: {
-      color: 'rgba(59, 130, 246, 0.7)', // Màu xanh da trời pastel (Tailwind blue-500)
+      color: 'rgba(99, 102, 241, 0.7)', // Indigo-500 pastel
       line: {
-        color: 'rgba(37, 99, 235, 1)',  // Viền cột đậm hơn chút
+        color: 'rgba(79, 70, 229, 1)',
         width: 1.5
       }
     }
@@ -38,33 +51,34 @@ export function ChartPlot({ config }: { config: unknown }) {
     <Suspense fallback={<div className="chart-loading p-4 text-center text-gray-400 animate-pulse">Đang vẽ biểu đồ…</div>}>
       <Plot
         data={styledData}
+        onClick={handleChartClick} // <--- Kích hoạt tính năng Drill-down
         layout={{
           ...layout,
           autosize: true,
-          // 2. Tăng margin bottom (b) lên 120px để có chỗ chứa chữ nghiêng
           margin: { l: 60, r: 24, t: 56, b: 120 }, 
           paper_bgcolor: 'transparent',
           plot_bgcolor: 'transparent',
+          hovermode: 'closest', // Giúp click chính xác hơn
           font: { 
-            color: '#cbd5e1', // Đổi toàn bộ chữ thành màu xám sáng cho dễ đọc
+            color: '#cbd5e1', 
             family: 'Inter, sans-serif'
           },
           xaxis: {
             ...layout.xaxis,
-            tickangle: -45, // 3. Xoay nghiêng chữ 45 độ
-            automargin: true, // Tự động đẩy lề nếu chữ quá dài
-            gridcolor: '#334155', // Màu lưới dọc chìm, không bị gắt
+            tickangle: -45,
+            automargin: true,
+            gridcolor: '#334155',
             zerolinecolor: '#475569'
           },
           yaxis: {
             ...layout.yaxis,
-            gridcolor: '#334155', // Màu lưới ngang chìm
+            gridcolor: '#334155',
             zerolinecolor: '#475569'
           }
         }}
         style={{ width: '100%', minHeight: 450 }} 
         useResizeHandler
-        config={{ responsive: true, displayModeBar: false }} // Tắt cái thanh menu rườm rà phía trên
+        config={{ responsive: true, displayModeBar: false }}
       />
     </Suspense>
   )

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api.routes import database, chat, connection, sessions, admin, config_route
+from app.api.routes import database, chat, connection, sessions, admin, config_route, dashboard
 import logging
 
 # Cấu hình Logging chuyên sâu (Console + File)
@@ -80,6 +80,7 @@ app.include_router(connection.router)
 app.include_router(sessions.router)
 app.include_router(admin.router)
 app.include_router(config_route.router)
+app.include_router(dashboard.router)
 
 @app.get("/", tags=["System"])
 def root_info():

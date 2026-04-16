@@ -17,6 +17,8 @@ import type {
   SessionResponse,
   TableSchema,
   UseDatabaseRequest,
+  PinnedMetric,
+  PlotlyChartConfig
 } from '../types/api'
 
 export const api = {
@@ -156,6 +158,17 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+
+  dashboardPin: (title: string, chart_config: PlotlyChartConfig, raw_data?: Record<string, unknown>[]) =>
+    requestJson<{ is_success: boolean; message: string }>('/dashboard/pin', {
+      method: 'POST',
+      body: JSON.stringify({ title, chart_config, raw_data }),
+    }),
+
+  dashboardMetrics: () => requestJson<PinnedMetric[]>('/dashboard/metrics'),
+
+  dashboardUnpin: (id: number) =>
+    requestJson<{ is_success: boolean }>(`/dashboard/metrics/${id}`, { method: 'DELETE' }),
 }
 
 /** Ping backend không ném nếu lỗi mạng — cho splash / settings. */

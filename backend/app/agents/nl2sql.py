@@ -51,8 +51,14 @@ def generate_sql(question: str, schema: str, error_feedback: str = None, chat_hi
     if plan_feedback:
         plan_instruction = f"\nƯU TIÊN TUYỆT ĐỐI làm theo bản kế hoạch đã chốt với người dùng dưới đây:\n[BẢN KẾ HOẠCH]\n{plan_feedback}\n[KẾT THÚC BẢN KẾ HOẠCH]\n"
 
+    # Pillar 2: Few-shot Learning - Tiêm ví dụ mẫu từ chuyên gia
+    from app.db.session_store import get_few_shot_examples
+    few_shot_context = get_few_shot_examples(limit=5)
+
     system_prompt = f"""Bạn là một Kiến trúc sư Cơ sở dữ liệu (Database Architect) và Chuyên gia SQL cấp cao.
 Nhiệm vụ của bạn là dịch các yêu cầu tự nhiên bằng tiếng Việt thành các câu lệnh SQL chính xác 100%.{plan_instruction}
+
+{few_shot_context}
 
 === LƯỢC ĐỒ CƠ SỞ DỮ LIỆU (SCHEMA) ===
 {{schema}}

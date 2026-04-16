@@ -41,23 +41,54 @@ def _summarize_schema(schema_text: str) -> str:
 
 
 def get_optimized_schema(question: str = "") -> str:
-    """Trả về schema rút gọn, ưu tiên các bảng/columns liên quan đến câu hỏi."""
+    """Trả về schema rút gọn, ưu tiên các bảng/columns liên quan bằng RAG Selection (Pillar 2)."""
     schema_text = get_multi_db_schema_context()
+    
+    # 1. Nếu schema nhỏ, trả về luôn để tiết kiệm token/time
     if len(schema_text) <= MAX_SCHEMA_CHARS:
         return schema_text
 
-    if question:
-        terms = set(re.findall(r"[A-Za-z0-9_]+", question.lower()))
+    # 2. Nếu schema lớn, dùng 'Schema Selector' (RAG nội bộ)
+    try:
+        from app.agents.llm_setup import get_llm
+        llm = get_llm(task="admin", temperature=0) # Dùng mode admin/nhanh cho tác vụ lọc
+        
+        # Lấy danh sách tên bảng hiện có
+        table_names = re.findall(r"Table: ([A-Za-z0-9_.]+)", schema_text)
+        
+        selector_prompt = f"""Dựa vào danh sách các bảng dưới đây và câu hỏi của người dùng, hãy liệt kê tối đa 10 tên bảng cần thiết nhất để trả lời câu hỏi.
+Chỉ trả về danh sách tên bảng, phân tách bằng dấu phẩy. Không giải thích.
+
+Danh sách bảng: {', '.join(table_names)}
+Câu hỏi: {question}
+"""
+        response = llm.invoke(selector_prompt)
+        selected_tables_text = getattr(response, "content", str(response))
+        selected_tables = [t.strip() for t in selected_tables_text.split(",")]
+        
+        # Lọc schema chỉ lấy các bảng đã chọn
         filtered_lines = []
+        include_table = False
         for line in schema_text.splitlines():
-            lower_line = line.lower()
-            if any(keyword in lower_line for keyword in ["hệ quản trị", "chế độ", "database", "schema", "table", "columns", "relationships"]):
+            # Luôn giữ lại thông tin meta
+            if any(k in line.lower() for k in ["hệ quản trị", "chế độ", "database", "relationships"]):
                 filtered_lines.append(line)
                 continue
-            if any(term in lower_line for term in terms):
+            
+            # Check bắt đầu block table
+            if line.startswith("Table: "):
+                t_name = line[7:]
+                include_table = any(t in t_name for t in selected_tables)
+            
+            if include_table:
                 filtered_lines.append(line)
-        if filtered_lines:
-            trimmed = "\n".join(filtered_lines)
-            return _truncate_text(trimmed, MAX_SCHEMA_CHARS)
 
+        if filtered_lines:
+            return _truncate_text("\n".join(filtered_lines), MAX_SCHEMA_CHARS)
+
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Lỗi RAG Schema Selector: {e}")
+
+    # Fallback về summarize cơ bản nếu AI lỗi
     return _summarize_schema(schema_text)

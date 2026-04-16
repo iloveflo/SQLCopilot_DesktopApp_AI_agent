@@ -121,3 +121,11 @@ export type PlotlyChartConfig = {
   data: Record<string, unknown>[]
   layout?: Record<string, unknown>
 }
+
+export type PinnedMetric = {
+  id: number
+  title: string
+  chart_config: PlotlyChartConfig
+  raw_data?: Record<string, unknown>[] | null
+  created_at: string
+}

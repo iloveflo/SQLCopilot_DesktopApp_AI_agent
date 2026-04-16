@@ -27,11 +27,46 @@ def setup_sessions_table() -> None:
             user_id      TEXT DEFAULT 'guest_user'
         )
     """)
+    
+    # Bảng Audit Logs theo chuẩn Enterprise 10/10
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS audit_logs (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id   TEXT NOT NULL,
+            user_id      TEXT NOT NULL,
+            question     TEXT,
+            sql_query    TEXT,
+            execution_time_ms INTEGER,
+            status       TEXT, -- 'success' hoặc 'error'
+            created_at   TEXT NOT NULL
+        )
+    """)
+    # Bảng Ví dụ mẫu cho Few-shot Learning (Pillar 2 - 10/10)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS ai_examples (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            question     TEXT NOT NULL,
+            sql_query    TEXT NOT NULL,
+            explanation  TEXT,
+            tags         TEXT DEFAULT 'general'
+        )
+    """)
+
+    # Bảng Dashboard Pinning (Pillar 3 - 10/10)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS pinned_metrics (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            title        TEXT NOT NULL,
+            chart_config TEXT NOT NULL, -- JSON string
+            raw_data     TEXT,          -- JSON string
+            created_at   TEXT NOT NULL
+        )
+    """)
+    
     # Nâng cấp schema nếu thiếu cột user_id
     try:
         conn.execute("ALTER TABLE chat_sessions ADD COLUMN user_id TEXT DEFAULT 'guest_user'")
     except sqlite3.OperationalError:
-        # Cột đã tồn tại hoặc lỗi khác (như bảng không tồn tại - sẽ được tạo bởi CREATE TABLE bên trên)
         pass
     conn.commit()
 
@@ -158,6 +193,40 @@ def get_session(session_id: str) -> Optional[dict]:
         "message_count": row[5],
         "user_id": row[6]
     }
+
+def log_query_execution(session_id: str, question: str, sql: str, duration_ms: int, status: str) -> None:
+    # ... (giữ nguyên code cũ) ...
+    from app.db.connection import connection_manager
+    user_id = connection_manager.get_user_identifier()
+    conn = _get_conn()
+    conn.execute(
+        "INSERT INTO audit_logs (session_id, user_id, question, sql_query, execution_time_ms, status, created_at) VALUES (?,?,?,?,?,?,?)",
+        (session_id, user_id, question, sql, duration_ms, status, _now_iso())
+    )
+    conn.commit()
+    logger.info(f"Audit log saved for session {session_id}")
+
+def get_few_shot_examples(limit: int = 5) -> str:
+    """Lấy các ví dụ mẫu để tiêm vào Prompt (Few-shot)."""
+    conn = _get_conn()
+    cursor = conn.execute("SELECT question, sql_query FROM ai_examples ORDER BY id DESC LIMIT ?", (limit,))
+    rows = cursor.fetchall()
+    if not rows:
+        return ""
+    
+    examples = "=== VÍ DỤ MẪU (FEW-SHOT LEARNING) ===\n"
+    for row in rows:
+        examples += f"Câu hỏi: {row[0]}\nSQL: {row[1]}\n---\n"
+    return examples
+
+def add_ai_example(question: str, sql: str, explanation: str = "") -> None:
+    """Thêm ví dụ mẫu vào kho tri thức của AI."""
+    conn = _get_conn()
+    conn.execute(
+        "INSERT INTO ai_examples (question, sql_query, explanation) VALUES (?,?,?)",
+        (question, sql, explanation)
+    )
+    conn.commit()
 
 # Tự động khởi tạo bảng khi module được import
 setup_sessions_table()

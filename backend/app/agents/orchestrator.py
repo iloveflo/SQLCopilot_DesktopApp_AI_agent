@@ -15,17 +15,19 @@ from app.agents.visualizer import generate_chart_config
 class AgentState(TypedDict):
     question: str
     schema: str
-    is_approved: bool
+    plan: str
     plan_feedback: Optional[str]
-    plan: Optional[str]
-    needs_approval: bool
     sql_query: str
     sql_error: Optional[str]
-    retries: int
-    raw_data: Optional[List[Dict[str, Any]]]
+    raw_data: List[Dict[str, Any]]
     answer: str
+    is_approved: bool
+    retries: int
     chart_config: Optional[Dict[str, Any]]
     chat_history: Annotated[list[Dict[str, Any]], operator.add]
+    session_id: str
+    cached_sql: Optional[str]
+    cached_plan: Optional[str]
 
 # 2. Định nghĩa các Node logic
 def _format_recent_history(chat_history: list[Dict[str, Any]], max_messages: int = 6) -> str:
@@ -36,7 +38,18 @@ def _format_recent_history(chat_history: list[Dict[str, Any]], max_messages: int
 
 
 def node_read_schema(state: AgentState):
-    return {"schema": get_optimized_schema(state.get("question", ""))}
+    from app.db.semantic_cache import get_cached_response
+    
+    # Pillar 2: Kiểm tra Semantic Cache trước khi tốn Token
+    cache_hit = get_cached_response(state["question"])
+    if cache_hit:
+        return {
+            "schema": get_optimized_schema(state["question"]),
+            "cached_sql": cache_hit["sql_query"],
+            "cached_plan": cache_hit["plan"]
+        }
+        
+    return {"schema": get_optimized_schema(state["question"]), "cached_sql": None}
 
 
 def node_plan(state: AgentState):
@@ -69,10 +82,14 @@ def node_generate_sql(state: AgentState):
         chat_history=formatted_history,
         plan_feedback=combined_plan
     )
-    return {"sql_query": result.query}
+    return {"sql_query": result.query, "plan": plan or state.get("cached_plan")}
 
 def node_execute(state: AgentState):
-    result = execute_safe_query(state["sql_query"])
+    result = execute_safe_query(
+        sql=state["sql_query"], 
+        session_id=state.get("session_id", "unknown"), 
+        question=state.get("question", "")
+    )
     if result["success"]:
         return {"raw_data": result["data"], "sql_error": None}
     else:
@@ -97,6 +114,10 @@ def node_interpret(state: AgentState):
         }
     ]
         
+    if state.get("raw_data") and state.get("sql_query"):
+        from app.db.semantic_cache import set_cached_response
+        set_cached_response(state["question"], state["sql_query"], state.get("plan"))
+
     return {
         "answer": answer,
         "chart_config": chart_config,
@@ -107,9 +128,15 @@ def node_interpret(state: AgentState):
 # 3. Định nghĩa Conditional Routing
 def route_after_reader(state: AgentState) -> str:
     """Nên lập kế hoạch hay quất luôn sinh Code?"""
+    if state.get("cached_sql"):
+        return "bypass_to_execute"
     if not state.get("is_approved", False):
         return "planner"
     return "sql_coder"
+
+def node_bypass_cache(state: AgentState):
+    """Bridge để gán SQL từ cache vào state thực thi."""
+    return {"sql_query": state["cached_sql"], "plan": state["cached_plan"]}
 
 def should_retry(state: AgentState) -> str:
     """Quyết định luồng đi tiếp dựa vào state hiện tại."""
@@ -128,10 +155,20 @@ workflow.add_node("planner", node_plan)
 workflow.add_node("sql_coder", node_generate_sql)
 workflow.add_node("db_executor", node_execute)
 workflow.add_node("data_teller", node_interpret)
+workflow.add_node("cache_bridge", node_bypass_cache)
 
 workflow.set_entry_point("reader")
 
-workflow.add_conditional_edges("reader", route_after_reader)
+workflow.add_conditional_edges(
+    "reader", 
+    route_after_reader,
+    {
+        "planner": "planner",
+        "sql_coder": "sql_coder",
+        "bypass_to_execute": "cache_bridge"
+    }
+)
+workflow.add_edge("cache_bridge", "db_executor")
 workflow.add_edge("planner", END)
 workflow.add_edge("sql_coder", "db_executor")
 
@@ -149,7 +186,9 @@ workflow.add_edge("data_teller", END)
 # Khởi tạo kết nối vật lý với file CSDL trên ổ cứng
 from pathlib import Path
 db_path = Path.home() / ".sqlcopilot_chat.sqlite3"
-sqlite_conn = sqlite3.connect(str(db_path), check_same_thread=False)
+sqlite_conn = sqlite3.connect(str(db_path), check_same_thread=False, timeout=10)
+sqlite_conn.execute("PRAGMA journal_mode=WAL;")
+sqlite_conn.execute("PRAGMA synchronous=NORMAL;")
 memory = SqliteSaver(sqlite_conn)
 memory.setup()  # Tạo các bảng nếu chưa có
 
@@ -161,13 +200,16 @@ def run_copilot(question: str, session_id: str = "default_session", is_approved:
     
     initial_state = {
         "question": question,
+        "session_id": session_id,
         "is_approved": is_approved,
         "plan_feedback": plan_feedback,
         "retries": 0,
         "sql_error": None,
         "raw_data": [],
         "sql_query": "",
-        "chart_config": None
+        "chart_config": None,
+        "cached_sql": None,
+        "cached_plan": None
     }
     
     return sql_copilot_app.invoke(initial_state, config=config)
@@ -177,13 +219,16 @@ def stream_copilot(question: str, session_id: str = "default_session", is_approv
     config = {"configurable": {"thread_id": session_id}}
     initial_state = {
         "question": question,
+        "session_id": session_id,
         "is_approved": is_approved,
         "plan_feedback": plan_feedback,
         "retries": 0,
         "sql_error": None,
         "raw_data": [],
         "sql_query": "",
-        "chart_config": None
+        "chart_config": None,
+        "cached_sql": None,
+        "cached_plan": None
     }
     
     # Sử dụng stream_mode="updates" để nhận sự kiện khi mỗi Node chạy xong
