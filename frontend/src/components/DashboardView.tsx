@@ -3,11 +3,18 @@ import { api } from '../api/sqlCopilot'
 import type { PinnedMetric } from '../types/api'
 import { ChartPlot } from './ChartPlot'
 
-export function DashboardView() {
+type Props = {
+  isOpen: boolean
+  onClose: () => void
+  version?: number
+}
+
+export function DashboardView({ isOpen, onClose, version = 0 }: Props) {
   const [metrics, setMetrics] = useState<PinnedMetric[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
 
   const fetchMetrics = async () => {
+    setLoading(true)
     try {
       const data = await api.dashboardMetrics()
       setMetrics(data)
@@ -19,10 +26,13 @@ export function DashboardView() {
   }
 
   useEffect(() => {
-    void fetchMetrics()
-  }, [])
+    if (isOpen) {
+      void fetchMetrics()
+    }
+  }, [isOpen, version])
 
   const handleUnpin = async (id: number) => {
+    if (!confirm('Bạn có chắc chắn muốn xóa biểu đồ này khỏi Dashboard?')) return
     try {
       await api.dashboardUnpin(id)
       setMetrics((prev) => prev.filter((m) => m.id !== id))
@@ -31,50 +41,49 @@ export function DashboardView() {
     }
   }
 
-  if (loading) {
-    return <div className="p-8 text-center text-[var(--text-dim)]">Đang tải biểu đồ...</div>
-  }
-
-  if (metrics.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center" style={{ color: 'var(--text-dim)' }}>
-        <span style={{ fontSize: '3rem', marginBottom: '1rem', display: 'block' }}>📌</span>
-        <h2>Chưa có biểu đồ nào được ghim</h2>
-        <p>Hãy hỏi Copilot vẽ biểu đồ và bấm "Ghim lên Dashboard" để tạo bảng điều khiển riêng của bạn.</p>
-      </div>
-    )
-  }
-
   return (
-    <div className="dashboard-container" style={{ padding: '2rem', overflowY: 'auto', height: '100%', background: 'rgba(15, 23, 42, 0.4)' }}>
-      <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-bright)', marginBottom: '2rem' }}>
-        📊 Bảng Điều Khiển Tổng Quan
-      </h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', gap: '2rem' }}>
-        {metrics.map((m) => (
-          <div key={m.id} className="bubble assistant" style={{ display: 'block', maxWidth: 'none', background: 'rgba(30, 41, 59, 0.7)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ fontSize: '1.1rem', margin: 0, color: 'var(--accent-color)' }}>{m.title}</h3>
-              <button 
-                className="btn secondary" 
-                style={{ fontSize: '0.8rem', padding: '4px 8px' }}
-                onClick={() => handleUnpin(m.id)}
-                title="Bỏ ghim khỏi Dashboard"
-              >
-                ✕ Bỏ ghim
-              </button>
-            </div>
-            
-            {m.chart_config && (
-              <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '12px', overflow: 'hidden' }}>
-                 <ChartPlot config={m.chart_config} />
+    <>
+      <div className={`dashboard-overlay ${isOpen ? 'open' : ''}`} onClick={onClose} />
+      <div className={`dashboard-sidebar ${isOpen ? 'open' : ''}`}>
+        <div className="dashboard-header">
+          <h2>📊 Dashboard Của Bạn</h2>
+          <button type="button" className="btn icon" onClick={onClose} title="Đóng">✕</button>
+        </div>
+        <div className="dashboard-content">
+          {loading ? (
+            <p className="chart-loading">Đang tải biểu đồ...</p>
+          ) : metrics.length === 0 ? (
+            <p className="empty-hint" style={{ textAlign: 'center', marginTop: '20px' }}>
+              Chưa có biểu đồ nào được ghim. Hãy hỏi AI một câu hỏi có biểu đồ và bấm "Ghim Dashboard".
+            </p>
+          ) : (
+            metrics.map((m) => (
+              <div key={m.id} className="dashboard-card">
+                <div className="dashboard-card-actions">
+                  <button 
+                    type="button"
+                    className="btn danger small"
+                    onClick={() => handleUnpin(m.id)}
+                    title="Xóa khỏi Dashboard"
+                  >
+                     ✕ Bỏ ghim
+                  </button>
+                </div>
+                <h3 className="dashboard-card-title">{m.title || 'Biểu đồ'}</h3>
+                <div className="dashboard-card-date">
+                  {new Date(m.created_at).toLocaleString('vi-VN')}
+                </div>
+                {/* Cho phép hiển thị raw_data trong tooltip/Plotly */}
+                {m.chart_config && (
+                  <div style={{ marginTop: '10px' }}>
+                    <ChartPlot config={m.chart_config} rawData={m.raw_data} />
+                  </div>
+                )}
               </div>
-            )}
-            
-            {/* Ẩn data table trên dashboard cho gọn, nếu người dùng muốn có thể hiện nút xem data */}
-          </div>
-        ))}
+            ))
+          )}
+        </div>
       </div>
-    </div>
+    </>
   )
 }

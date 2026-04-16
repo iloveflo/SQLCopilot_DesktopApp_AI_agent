@@ -6,7 +6,7 @@ from app.agents.llm_setup import get_llm
 
 class ChartConfig(BaseModel):
     should_visualize: bool = Field(description="True nếu dữ liệu phù hợp để vẽ biểu đồ (có ít nhất 1 cột số và 1 cột phân loại/thời gian). False nếu chỉ là text hoặc 1 con số đơn lẻ.")
-    chart_type: str = Field(description="Loại biểu đồ. Chỉ được chọn 1 trong: 'bar', 'line', 'pie'. Trả về 'none' nếu không thể vẽ.")
+    chart_type: str = Field(description="Loại biểu đồ. Chỉ được chọn 1 trong: 'bar', 'line', 'pie', 'area', 'scatter'. Trả về 'none' nếu không thể vẽ.")
     x_column: Optional[str] = Field(description="Tên cột dùng cho trục X (hoặc labels cho pie chart). Thường là danh mục hoặc thời gian.")
     y_column: Optional[str] = Field(description="Tên cột dùng cho trục Y (hoặc values cho pie chart). Bắt buộc phải là cột chứa số liệu (int/float/decimal).")
     title: str = Field(description="Tiêu đề biểu đồ tiếng Việt ngắn gọn, chuyên nghiệp.")
@@ -33,14 +33,15 @@ Nhiệm vụ của bạn là phân tích cấu trúc dữ liệu đầu vào, qu
    - CHỈ quyết định vẽ biểu đồ (`should_visualize: true`) NẾU dữ liệu là một mảng có chứa ít nhất 1 cột Danh mục/Thời gian VÀ 1 cột Số liệu (Int/Float).
    - TỪ CHỐI vẽ biểu đồ (`should_visualize: false` và `chart_type: "none"`) NẾU dữ liệu chỉ trả về 1 con số đơn lẻ (Ví dụ: đếm tổng số user), hoặc toàn bộ là văn bản không chứa dữ liệu để đo lường.
 
-2. QUY TẮC CHỌN LOẠI BIỂU ĐỒ (CHART_TYPE ENUM STRICTNESS):
-   - Nếu Trục X là Thời gian (ngày, tháng, năm) -> BẮT BUỘC dùng: `line` (Biểu đồ đường).
+3. QUY TẮC CHỌN LOẠI BIỂU ĐỒ (CHART_TYPE ENUM STRICTNESS):
+   - Nếu Trục X là Thời gian (ngày, tháng, năm) -> ƯU TIÊN dùng: `line` (Biểu đồ đường) hoặc `area` (Miền tích lũy).
    - Nếu Trục X là Danh mục (tên sản phẩm, chi nhánh, trạng thái...):
        + Để so sánh độ lớn thông thường -> BẮT BUỘC dùng: `bar` (Biểu đồ cột).
        + Để xem tỷ trọng (phần trăm) VÀ số lượng danh mục <= 7 -> ĐƯỢC PHÉP dùng: `pie` (Biểu đồ tròn).
-   - CẢNH BÁO ĐỊNH DẠNG: Bạn CHỈ ĐƯỢC PHÉP trả về 1 trong 4 từ khóa sau: "bar", "line", "pie", hoặc "none". BẮT BUỘC viết thường toàn bộ, không có dấu cách, không viết hoa. (TUYỆT ĐỐI KHÔNG trả về "Bar Chart" hay "PIE").
+   - Nếu muốn xem phân bổ điểm hoặc tương quan 2 con số -> ĐƯỢC PHÉP dùng: `scatter` (Biểu đồ phân tán).
+   - CẢNH BÁO ĐỊNH DẠNG: Bạn CHỈ ĐƯỢC PHÉP trả về 1 trong 6 từ khóa sau: "bar", "line", "pie", "area", "scatter", hoặc "none". BẮT BUỘC viết thường toàn bộ, không có dấu cách, không viết hoa.
 
-3. QUY TẮC GHÉP CỘT (AXIS MAPPING):
+4. QUY TẮC GHÉP CỘT (AXIS MAPPING):
    - `x_column`: BẮT BUỘC chọn đúng 1 tên cột chứa Danh mục hoặc Thời gian.
    - `y_column`: BẮT BUỘC chọn đúng 1 tên cột chứa Số liệu để tính toán (Ví dụ: sum, count, total...).
    - Tên cột BẮT BUỘC phải copy y nguyên từng ký tự từ phần "Danh sách các cột hiện có" ở trên. Tuyệt đối không tự bịa ra tên cột.
@@ -94,6 +95,18 @@ Nhiệm vụ của bạn là phân tích cấu trúc dữ liệu đầu vào, qu
         x_data = list(aggregated.keys())
         y_data = list(aggregated.values())
 
+        plotly_type = safe_chart_type
+        fill_mode = None
+        mode = None
+        
+        if safe_chart_type == 'area':
+            plotly_type = 'scatter'
+            fill_mode = 'tozeroy'
+            mode = 'lines'
+        elif safe_chart_type == 'scatter':
+            plotly_type = 'scatter'
+            mode = 'markers'
+
         plotly_config = {
             "data": [
                 {
@@ -101,7 +114,9 @@ Nhiệm vụ của bạn là phân tích cấu trúc dữ liệu đầu vào, qu
                     "y": y_data if safe_chart_type != 'pie' else None,
                     "labels": x_data if safe_chart_type == 'pie' else None,
                     "values": y_data if safe_chart_type == 'pie' else None,
-                    "type": safe_chart_type,
+                    "type": plotly_type,
+                    "fill": fill_mode,
+                    "mode": mode,
                     "name": result.y_column
                 }
             ],

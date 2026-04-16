@@ -9,6 +9,8 @@ import { SchemaSidebar } from './components/SchemaSidebar'
 import { StatusBar } from './components/StatusBar'
 import { AdminPanel } from './components/AdminPanel'
 import { DatabasePickerModal } from './components/DatabasePickerModal'
+import { DashboardView } from './components/DashboardView'
+import { ToastContainer, ToastMessage, ToastType } from './components/Toast'
 import './App.css'
 
 type PendingApproval = { query: string; plan: string }
@@ -34,6 +36,9 @@ export default function App() {
   const [showConnect, setShowConnect] = useState(false)
   const [showDbPick, setShowDbPick] = useState(false)
   const [showAdmin, setShowAdmin] = useState(false)
+  const [showDashboard, setShowDashboard] = useState(false)
+  const [dashboardVersion, setDashboardVersion] = useState(0)
+  const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [pendingApproval, setPendingApproval] = useState<PendingApproval | null>(null)
   const [chatBusy, setChatBusy] = useState(false)
   const [banner, setBanner] = useState<string | null>(null)
@@ -329,6 +334,31 @@ export default function App() {
     }
   }
 
+  const addToast = (message: string, type: ToastType = 'info') => {
+    const id = Math.random().toString(36).substring(2, 9)
+    setToasts((prev) => [...prev, { id, message, type }])
+  }
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id))
+  }
+
+  const handlePinMetric = async (chartConfig: unknown, _rawData?: unknown) => {
+    try {
+      const title = (chartConfig as any)?.layout?.title || 'Biểu đồ từ Chat'
+      await api.dashboardPin({
+        title: typeof title === 'object' ? title.text : title,
+        chart_config: chartConfig,
+        raw_data: null // Tối ưu hiệu năng: Không gửi dữ liệu thô dư thừa
+      })
+      addToast('Đã ghim biểu đồ vào Dashboard!', 'success')
+      // Tự động yêu cầu Dashboard làm mới dữ liệu
+      setDashboardVersion(v => v + 1)
+    } catch (e) {
+      addToast('Lỗi ghim biểu đồ: ' + (e instanceof Error ? e.message : 'Unknown error'), 'error')
+    }
+  }
+
   const handleApprovePlan = async (planFeedback: string) => {
     if (!pendingApproval || !activeSessionId) return
     setChatBusy(true)
@@ -424,6 +454,9 @@ export default function App() {
               <button type="button" className="btn secondary" onClick={() => void loadSchema()}>
                 Tải lược đồ
               </button>
+              <button type="button" className="btn secondary" onClick={() => setShowDashboard(true)}>
+                📊 Dashboard
+              </button>
               {status?.is_admin ? (
                 <button type="button" className="btn secondary" onClick={() => {
                   setAdminDefaultTab('users')
@@ -484,6 +517,7 @@ export default function App() {
           onSend={(q) => void handleSend(q)}
           onApprovePlan={(fb) => void handleApprovePlan(fb)}
           onCancelApproval={() => setPendingApproval(null)}
+          onPinMetric={handlePinMetric}
         />
         <div
           className={`resizer right-resizer ${isResizingRight ? 'dragging' : ''}`}
@@ -504,6 +538,14 @@ export default function App() {
           })
         }}
       />
+
+      <DashboardView 
+        isOpen={showDashboard} 
+        onClose={() => setShowDashboard(false)} 
+        version={dashboardVersion}
+      />
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
 
       <DatabasePickerModal
         open={showDbPick}

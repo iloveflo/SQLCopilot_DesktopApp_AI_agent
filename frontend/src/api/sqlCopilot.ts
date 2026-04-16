@@ -174,6 +174,11 @@ export const api = {
   dashboardMetrics: () => requestJson<PinnedMetric[]>('/dashboard/metrics'),
   dashboardUnpin: (id: number) =>
     requestJson<{ is_success: boolean }>(`/dashboard/metrics/${id}`, { method: 'DELETE' }),
+  dashboardPin: (body: { title: string, chart_config: unknown, raw_data?: unknown }) =>
+    requestJson<{ is_success: boolean; message: string }>('/dashboard/pin', {
+      method: 'POST',
+      body: JSON.stringify(body)
+    }),
 }
 
 /** Ping backend không ném nếu lỗi mạng — cho splash / settings. */

@@ -44,9 +44,15 @@ def setup_dashboard_table() -> None:
             title        TEXT NOT NULL,
             chart_config TEXT NOT NULL,
             raw_data     TEXT,
-            created_at   TEXT NOT NULL
+            created_at   TEXT NOT NULL,
+            user_id      TEXT DEFAULT 'guest_user'
         )
     """)
+    # Nâng cấp schema nếu thiếu cột user_id
+    try:
+        conn.execute("ALTER TABLE pinned_metrics ADD COLUMN user_id TEXT DEFAULT 'guest_user'")
+    except sqlite3.OperationalError:
+        pass
     conn.commit()
 
 def _now_iso() -> str:

@@ -15,6 +15,7 @@ type Props = {
   onSend: (query: string) => void
   onApprovePlan: (planFeedback: string) => void
   onCancelApproval: () => void
+  onPinMetric?: (config: unknown, data: unknown) => void
 }
 
 export function ChatThread({
@@ -27,6 +28,7 @@ export function ChatThread({
   onSend,
   onApprovePlan,
   onCancelApproval,
+  onPinMetric,
 }: Props) {
   const [draft, setDraft] = useState('')
   const [feedback, setFeedback] = useState('')
@@ -84,7 +86,7 @@ export function ChatThread({
               </pre>
             ) : null}
             {m.raw_data && m.raw_data.length > 0 ? <DataTable rows={m.raw_data} /> : null}
-            {m.chart_config ? <ChartPlot config={m.chart_config} /> : null}
+            {m.chart_config ? <ChartPlot config={m.chart_config} rawData={m.raw_data} onPin={onPinMetric} /> : null}
           </article>
         ))}
         {pendingApproval ? (
