@@ -48,9 +48,9 @@ def node_generate_sql(state: AgentState):
     history = state.get("chat_history", [])
     formatted_history = _format_recent_history(history, max_messages=4)
     
-    # Nếu đã được duyệt (HITL) và có SQL sẵn, không cần chạy lại AI
-    if state.get("is_approved") and state.get("sql_query"):
-        return {"sql_query": state["sql_query"]}
+    # Nếu đã được duyệt (HITL) và KHÔNG có góp ý mới, sử dụng ngay SQL cũ
+    if state.get("is_approved") and state.get("sql_query") and not state.get("plan_feedback"):
+        return {"sql_query": state["sql_query"], "needs_approval": False}
 
     result = generate_sql(
         question=state["question"], 
@@ -63,7 +63,10 @@ def node_generate_sql(state: AgentState):
     return {
         "sql_query": result.query, 
         "plan": result.plan or "Đã lập kế hoạch tự động.",
-        "answer": "Đã chuẩn bị kế hoạch và câu lệnh SQL."
+        "answer": "Đã chuẩn bị kế hoạch và câu lệnh SQL.",
+        # Nếu có feedback bám kèm is_approved=True, vẫn cần chạy execute sau node này
+        # nhưng node này bản thân nó 'xong' nhiệm vụ generate.
+        "needs_approval": not state.get("is_approved", False)
     }
 
 def node_execute(state: AgentState):
@@ -73,7 +76,7 @@ def node_execute(state: AgentState):
         question=state.get("question", "")
     )
     if result["success"]:
-        return {"raw_data": result["data"], "sql_error": None}
+        return {"raw_data": result["data"], "sql_error": None, "plan_feedback": None} # Xóa feedback sau khi đã dùng
     else:
         current_retries = state.get("retries", 0)
         return {"sql_error": result["error"], "retries": current_retries + 1}
@@ -101,6 +104,7 @@ def node_interpret(state: AgentState):
         "answer": res["answer"],
         "chart_config": res["chart_config"],
         "is_approved": False,
+        "raw_data": state.get("raw_data"), # Trả về để Frontend cập nhật stream đồng bộ
         "chat_history": new_memory
     }
 
