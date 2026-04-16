@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from typing import List
 import logging
 from app.db.connection import connection_manager
-from app.db.metadata import get_all_tables, get_table_schema
+from app.db.metadata import get_all_tables, get_table_schema, invalidate_schema_cache
 from app.schemas.db_schema import TableSchema
 
 router = APIRouter(prefix="/db", tags=["Database Management"])
@@ -33,6 +33,9 @@ def get_full_schema():
         if not active_dbs:
             # Nếu chưa chọn DB nào, không cần quét (tránh crash)
             return []
+
+        # Xóa Schema Cache để đảm bảo lấy được cấu trúc DB mới nhất 
+        invalidate_schema_cache()
 
         for db_name in active_dbs:
             tables = get_all_tables(schema=db_name)

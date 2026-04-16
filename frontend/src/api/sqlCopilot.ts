@@ -11,14 +11,13 @@ import type {
   ChatResponse,
   ConnectRequest,
   ConnectionStatus,
+  PinnedMetric,
   SelectDatabasesRequest,
   SessionCreate,
   SessionRename,
   SessionResponse,
   TableSchema,
   UseDatabaseRequest,
-  PinnedMetric,
-  PlotlyChartConfig
 } from '../types/api'
 
 export const api = {
@@ -117,21 +116,34 @@ export const api = {
 
     while (true) {
       const { done, value } = await reader.read()
-      if (done) break
 
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n\n')
-      buffer = lines.pop() || ''
+      if (value) {
+        buffer += decoder.decode(value, { stream: !done })
+        const lines = buffer.split('\n\n')
+        buffer = lines.pop() || ''
 
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(line.slice(6))
-            onChunk(data)
-          } catch (e) {
-            console.error('Lỗi parse SSE chunk:', e)
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              onChunk(data)
+            } catch (e) {
+              console.error('Lỗi parse SSE chunk:', e)
+            }
           }
         }
+      }
+
+      if (done) {
+        if (buffer.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(buffer.slice(6))
+            onChunk(data)
+          } catch (e) {
+            console.error('Lỗi parse phần tử cuối cùng:', e)
+          }
+        }
+        break
       }
     }
   },
@@ -159,14 +171,7 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
-  dashboardPin: (title: string, chart_config: PlotlyChartConfig, raw_data?: Record<string, unknown>[]) =>
-    requestJson<{ is_success: boolean; message: string }>('/dashboard/pin', {
-      method: 'POST',
-      body: JSON.stringify({ title, chart_config, raw_data }),
-    }),
-
   dashboardMetrics: () => requestJson<PinnedMetric[]>('/dashboard/metrics'),
-
   dashboardUnpin: (id: number) =>
     requestJson<{ is_success: boolean }>(`/dashboard/metrics/${id}`, { method: 'DELETE' }),
 }

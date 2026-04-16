@@ -8,6 +8,43 @@ from app.db.connection import connection_manager
 router = APIRouter(prefix="/admin", tags=["Admin — User Management"])
 logger = logging.getLogger(__name__)
 
+def split_sql_statements(sql: str) -> list[str]:
+    """Tách nhiều câu lệnh SQL theo dấu chấm phẩy, bỏ qua dấu chấm phẩy nằm trong chuỗi."""
+    statements = []
+    current = []
+    in_single_quote = False
+    in_double_quote = False
+    escaped = False
+
+    for char in sql:
+        if escaped:
+            current.append(char)
+            escaped = False
+            continue
+        if char == '\\':
+            escaped = True
+            current.append(char)
+            continue
+        if char == "'" and not in_double_quote:
+            in_single_quote = not in_single_quote
+        elif char == '"' and not in_single_quote:
+            in_double_quote = not in_double_quote
+
+        if char == ';' and not in_single_quote and not in_double_quote:
+            stmt = "".join(current).strip()
+            if stmt:
+                statements.append(stmt)
+            current = []
+        else:
+            current.append(char)
+
+    if current:
+        stmt = "".join(current).strip()
+        if stmt:
+            statements.append(stmt)
+
+    return statements
+
 def _require_admin():
     """Guard function: chặn non-admin truy cập các endpoint nhạy cảm."""
     if not connection_manager.engine:
@@ -35,7 +72,7 @@ def admin_command(req: AdminCommandRequest):
             raise HTTPException(status_code=400, detail="Thiếu planned_sql để thực thi. Vui lòng truyền lại SQL đã duyệt.")
         try:
             # Admin queries có thể chứa nhiều statements, tách bởi ;
-            statements = [s.strip() for s in req.planned_sql.split(";") if s.strip()]
+            statements = split_sql_statements(req.planned_sql)
             with connection_manager.engine.connect() as conn:
                 for stmt in statements:
                     conn.execute(text(stmt))

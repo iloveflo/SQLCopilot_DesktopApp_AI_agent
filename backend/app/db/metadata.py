@@ -1,9 +1,24 @@
 import logging
 import traceback
+import time
 from sqlalchemy import inspect
 from app.db.connection import connection_manager
 
 logger = logging.getLogger(__name__)
+
+# Cache biến toàn cục cho Schema để giảm thiểu truy vấn Database
+SCHEMA_CACHE_DATA = None
+SCHEMA_CACHE_DBS = None
+SCHEMA_CACHE_TIME = 0
+SCHEMA_CACHE_TTL = 300  # 5 phút
+
+def invalidate_schema_cache():
+    """Xóa bỏ schema cache hiện tại để buộc nạp lại từ CSDL."""
+    global SCHEMA_CACHE_DATA, SCHEMA_CACHE_DBS, SCHEMA_CACHE_TIME
+    SCHEMA_CACHE_DATA = None
+    SCHEMA_CACHE_DBS = None
+    SCHEMA_CACHE_TIME = 0
+    logger.info("Đã xóa Schema Cache.")
 
 def get_all_tables(schema: str = None) -> list[str]:
     """
@@ -95,6 +110,18 @@ def get_multi_db_schema_context() -> str:
     if not active_dbs:
         return "Chưa chọn CSDL nào để phân tích. Vui lòng chọn ít nhất một Database."
 
+    global SCHEMA_CACHE_DATA, SCHEMA_CACHE_DBS, SCHEMA_CACHE_TIME
+    current_time = time.time()
+
+    # Kiểm tra cache hợp lệ
+    if (
+        SCHEMA_CACHE_DATA is not None 
+        and SCHEMA_CACHE_DBS == active_dbs
+        and (current_time - SCHEMA_CACHE_TIME) < SCHEMA_CACHE_TTL
+    ):
+        logger.info("Using cached schema context.")
+        return SCHEMA_CACHE_DATA
+
     dialect = connection_manager.engine.dialect.name
     host = getattr(connection_manager, 'current_host', 'localhost')
     port = getattr(connection_manager, 'current_port', 3306)
@@ -154,5 +181,10 @@ def get_multi_db_schema_context() -> str:
             schema_text += "\n"
 
         schema_text += "\n"
+
+    # Lưu vào cache
+    SCHEMA_CACHE_DATA = schema_text
+    SCHEMA_CACHE_DBS = active_dbs
+    SCHEMA_CACHE_TIME = current_time
 
     return schema_text

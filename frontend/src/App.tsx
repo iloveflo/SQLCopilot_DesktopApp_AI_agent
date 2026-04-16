@@ -9,7 +9,6 @@ import { SchemaSidebar } from './components/SchemaSidebar'
 import { StatusBar } from './components/StatusBar'
 import { AdminPanel } from './components/AdminPanel'
 import { DatabasePickerModal } from './components/DatabasePickerModal'
-import { DashboardView } from './components/DashboardView'
 import './App.css'
 
 type PendingApproval = { query: string; plan: string }
@@ -42,7 +41,6 @@ export default function App() {
   const [connectNonce, setConnectNonce] = useState(0)
   const [isApiKeySet, setIsApiKeySet] = useState<boolean | null>(null)
   const [adminDefaultTab, setAdminDefaultTab] = useState<'users' | 'command' | 'config'>('users')
-  const [viewMode, setViewMode] = useState<'chat' | 'dashboard'>('chat')
 
   const [leftWidth, setLeftWidth] = useState(240)
   const [rightWidth, setRightWidth] = useState(350)
@@ -322,7 +320,7 @@ export default function App() {
         ...m,
         {
           role: 'assistant',
-          content: e instanceof Error ? e.message : 'Lỗi mạng hoặc server.',
+          content: e instanceof Error ? `Lỗi hệ thống: ${e.message}. Nếu Backend bị khởi động lại, vui lòng nhấp "Kết nối lại" ở góc trên bên phải.` : 'Lỗi mạng hoặc mất kết nối Server. Vui lòng thử Kết nối lại.',
         },
       ])
     } finally {
@@ -389,7 +387,7 @@ export default function App() {
         ...m,
         {
           role: 'assistant',
-          content: e instanceof Error ? e.message : 'Lỗi khi duyệt kế hoạch.',
+          content: e instanceof Error ? `Lỗi khi duyệt: ${e.message}. Nếu Backend bị restart, vui lòng Kết nối lại.` : 'Lỗi mạng hoặc mất kết nối. Vui lòng Kết nối lại.',
         },
       ])
     } finally {
@@ -407,17 +405,6 @@ export default function App() {
     await refreshStatus()
   }
 
-  const handlePin = async (chartConfig: any, rawData: any) => {
-    try {
-      const title = prompt('Nhập tên cho biểu đồ này (vd: Doanh thu tháng 5):', 'Biểu đồ mới');
-      if (!title) return;
-      await api.dashboardPin(title, chartConfig, rawData);
-      setBanner('Đã ghim biểu đồ thành công!');
-    } catch (e) {
-      setBanner(e instanceof ApiError ? e.message : 'Lỗi khi ghim biểu đồ.');
-    }
-  }
-
   const connected = status?.is_connected ?? false
 
   return (
@@ -431,13 +418,6 @@ export default function App() {
             </button>
           ) : (
             <>
-              <button 
-                type="button" 
-                className={`btn ${viewMode === 'dashboard' ? 'primary' : 'secondary'}`} 
-                onClick={() => setViewMode(v => v === 'chat' ? 'dashboard' : 'chat')}
-              >
-                {viewMode === 'chat' ? '📊 Mở Dashboard' : '💬 Về mục Chat'}
-              </button>
               <button type="button" className="btn secondary" onClick={() => setShowDbPick(true)}>
                 Chọn DB
               </button>
@@ -491,27 +471,20 @@ export default function App() {
           className={`resizer left-resizer ${isResizingLeft ? 'dragging' : ''}`}
           onMouseDown={() => setIsResizingLeft(true)}
         />
-        
-        {viewMode === 'dashboard' ? (
-          <DashboardView />
-        ) : (
-          <ChatThread
-            messages={messages}
-            pendingApproval={pendingApproval}
-            busy={chatBusy}
-            thinkingStep={thinkingStep}
-            isApiKeySet={isApiKeySet}
-            onOpenAdminPanel={() => {
-              setAdminDefaultTab('config')
-              setShowAdmin(true)
-            }}
-            onSend={(q) => void handleSend(q)}
-            onApprovePlan={(fb) => void handleApprovePlan(fb)}
-            onCancelApproval={() => setPendingApproval(null)}
-            onPin={handlePin}
-          />
-        )}
-        
+        <ChatThread
+          messages={messages}
+          pendingApproval={pendingApproval}
+          busy={chatBusy}
+          thinkingStep={thinkingStep}
+          isApiKeySet={isApiKeySet}
+          onOpenAdminPanel={() => {
+            setAdminDefaultTab('config')
+            setShowAdmin(true)
+          }}
+          onSend={(q) => void handleSend(q)}
+          onApprovePlan={(fb) => void handleApprovePlan(fb)}
+          onCancelApproval={() => setPendingApproval(null)}
+        />
         <div
           className={`resizer right-resizer ${isResizingRight ? 'dragging' : ''}`}
           onMouseDown={() => setIsResizingRight(true)}

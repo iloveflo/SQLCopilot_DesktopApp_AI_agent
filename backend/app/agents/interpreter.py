@@ -1,13 +1,12 @@
 from langchain_core.prompts import ChatPromptTemplate
 from app.agents.llm_setup import get_llm
 import json
-import re
 import logging
-from typing import Optional, Dict, Any
 
 logger = logging.getLogger(__name__)
 
 def _extract_gemma_content(raw_content) -> str:
+    """Bóc tách phần 'text' thực sự từ mảng chứa 'thinking block' của Gemma 4."""
     if isinstance(raw_content, list):
         return "".join([
             block.get("text", "") 
@@ -16,100 +15,56 @@ def _extract_gemma_content(raw_content) -> str:
         ])
     return str(raw_content)
 
-def _extract_tag(text: str, tag: str) -> str:
-    pattern = rf"\[{tag}\](.*?)\[/{tag}\]"
-    match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
-    return match.group(1).strip() if match else ""
-
-def interpret_and_visualize(question: str, sql: str, raw_data: list) -> Dict[str, Any]:
-    """Gộp báo cáo và vẽ biểu đồ vào 1 lần gọi LLM (Speed Patch 2.0)."""
-    llm = get_llm(task="interpreter", temperature=0.1)
+def interpret_results(question: str, sql: str, raw_data: list) -> str:
+    llm = get_llm(task="interpreter", temperature=0.3)
     
+    # Tránh nhồi quá nhiều data làm tràn Context Window
     safe_data = raw_data[:50] if raw_data else []
     data_str = json.dumps(safe_data, ensure_ascii=False, default=str)
-    columns = list(raw_data[0].keys()) if raw_data else []
+    
+    system_prompt = """Bạn là một Chuyên gia Phân tích Dữ liệu (Lead Data Analyst) và Người báo cáo chuyên nghiệp.
+Nhiệm vụ của bạn là nhận kết quả thô (dạng JSON/List) từ cơ sở dữ liệu và biến nó thành một câu trả lời tự nhiên, có giá trị phân tích, và trực quan bằng tiếng Việt.
 
-    system_prompt = """Bạn là một Chuyên gia Phân tích Dữ liệu và Trực quan hóa cấp cao.
-Nhiệm vụ: Phân tích dữ liệu và đề xuất cấu hình biểu đồ (nếu phù hợp).
+=== DỮ LIỆU ĐẦU VÀO ===
+- Truy vấn SQL đã thực thi: {sql}
+- Dữ liệu thô (Tối đa 50 dòng): {data}
 
-=== QUY TẮC PHẢN HỒI (BẮT BUỘC) ===
-Bạn phải trả về 2 khối nội dung theo đúng định dạng sau:
+=== KỶ LUẬT TRÌNH BÀY (BẮT BUỘC TUÂN THỦ 100%) ===
+1. SỰ THẬT TỐI THƯỢNG (NO HALLUCINATION): Bạn CHỈ ĐƯỢC PHÉP trả lời dựa trên phần "Dữ liệu thô" được cung cấp. TUYỆT ĐỐI KHÔNG tự bịa ra số liệu, không phỏng đoán, và không chém gió ngoài phạm vi dữ liệu.
+2. GIAO THỨC DỮ LIỆU RỖNG: Nếu dữ liệu thô trống ([], None, rỗng), hãy lịch sự thông báo: "Dữ liệu hiện tại không có kết quả nào phù hợp với yêu cầu của bạn" và dừng lại. Không cố gắng vẽ vời.
+3. NGHIÊM CẤM RÒ RỈ JSON: TUYỆT ĐỐI KHÔNG BAO GIỜ hiển thị nguyên dạng JSON, mảng (Array), hoặc cú pháp code ra cho người dùng xem. Người dùng không hiểu code, họ cần ngôn ngữ con người.
 
-1. Khối phân tích: [ANALYSIS] ... lời giải thích ngắn gọn bằng tiếng Việt ... [/ANALYSIS]
-2. Khối biểu đồ: [CHART_CONFIG] { "should_visualize": true/false, "chart_type": "bar"/"line"/"pie", "x_column": "...", "y_column": "...", "title": "..." } [/CHART_CONFIG]
+=== TIÊU CHUẨN UI/UX BẰNG MARKDOWN ===
+4. ĐỊNH DẠNG TRỰC QUAN: 
+   - Nếu kết quả là một danh sách nhiều dòng (>= 2 dòng), BẮT BUỘC trình bày dưới dạng Bảng (Markdown Table) đẹp mắt, căn chỉnh rõ ràng.
+   - Sử dụng chữ in đậm (**text**) để làm nổi bật các con số tổng, tên sản phẩm Top 1, hoặc các điểm dữ liệu quan trọng.
+5. TƯ DUY PHÂN TÍCH (INSIGHTS): Đừng liệt kê dữ liệu như một cái máy. Nếu là số liệu thống kê, cung cấp ĐÚNG 1 dòng phân tích nhanh.
 
-=== KỶ LUẬT PHÂN TÍCH ===
-- Chỉ dựa trên dữ liệu thật. Không bịa.
-- Nếu không có dữ liệu, set should_visualize: false.
-- Biểu đồ: 1 cột số (y) và 1 cột danh mục/thời gian (x).
-
-=== TÀI LIỆU DỮ LIỆU ===
-SQL: {sql}
-Cột: {columns}
-Data (TOP 50): {data}
+=== QUY TẮC HIỆU NĂNG TỐC ĐỘ (QUAN TRỌNG) ===
+ĐỂ TỐI ƯU TỐC ĐỘ, BẠN THEO CÁC QUY TẮC IM LẶNG SAU:
+- BẮT BUỘC RÚT GỌN CÂU TRẢ LỜI NGẮN NHẤT CÓ THỂ. Tổng số từ bình luận KHÔNG ĐƯỢC VƯỢT QUÁ 60 TỪ ngoài bảng dữ liệu.
+- NGHIÊM CẤM vòng vo thân thiện như "Dưới đây là kết quả..." hay "Rất vui được giúp bạn...".
+- Đi thẳng vào kết quả và kết thúc. Xưng "tôi", gọi "bạn".
 """
     prompt = ChatPromptTemplate.from_messages([
         ("system", system_prompt),
-        ("human", "Câu hỏi: {question}")
+        ("human", "{question}")
     ])
     
     chain = prompt | llm
     
     try:
-        response = chain.invoke({"data": data_str, "sql": sql, "question": question, "columns": columns})
-        raw_text = _extract_gemma_content(getattr(response, "content", response))
+        # 1. Gọi AI
+        response = chain.invoke({
+            "data": data_str, 
+            "sql": sql, 
+            "question": question
+        })
         
-        analysis = _extract_tag(raw_text, "ANALYSIS")
-        config_str = _extract_tag(raw_text, "CHART_CONFIG")
-        
-        chart_config = None
-        if "should_visualize" in config_str.lower():
-            try:
-                # Ép kiểu an toàn cho JSON
-                config_json = json.loads(config_str)
-                if config_json.get("should_visualize"):
-                    # Sử dụng logic transform cũ để tạo Plotly config
-                    chart_config = _build_plotly_config(config_json, raw_data)
-            except:
-                pass
-
-        return {
-            "answer": analysis or raw_text[:500],
-            "chart_config": chart_config
-        }
+        # 2. BƯỚC QUAN TRỌNG: Đưa qua màng lọc bóc tách suy nghĩ trước khi return
+        clean_answer = _extract_gemma_content(getattr(response, "content", response))
+        return clean_answer
         
     except Exception as e:
-        logger.error(f"Lỗi Combined Interpreter: {e}")
-        return {"answer": "Lỗi phân tích dữ liệu.", "chart_config": None}
-
-def _build_plotly_config(res: dict, raw_data: list) -> Optional[dict]:
-    # Logic gộp và tối ưu biểu đồ (tương tự visualizer.py cũ)
-    try:
-        x_col = res.get("x_column")
-        y_col = res.get("y_column")
-        c_type = res.get("chart_type", "bar").lower()
-        
-        from collections import defaultdict
-        aggregated = defaultdict(float)
-        for row in raw_data:
-            x_v = row.get(x_col)
-            y_v = row.get(y_col)
-            if x_v is not None:
-                try: aggregated[str(x_v)] += float(y_v) if y_v is not None else 0
-                except: continue
-        
-        x_data = list(aggregated.keys())
-        y_data = list(aggregated.values())
-        
-        return {
-            "data": [{
-                "x": x_data if c_type != 'pie' else None,
-                "y": y_data if c_type != 'pie' else None,
-                "labels": x_data if c_type == 'pie' else None,
-                "values": y_data if c_type == 'pie' else None,
-                "type": c_type,
-                "name": y_col
-            }],
-            "layout": { "title": res.get("title", "Biểu đồ"), "margin": {"t": 40} }
-        }
-    except: return None
+        logger.error(f"Lỗi Interpreter: {e}")
+        return "Xin lỗi, đã có lỗi xảy ra trong quá trình phân tích và đọc dữ liệu."

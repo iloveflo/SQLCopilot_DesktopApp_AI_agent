@@ -15,7 +15,6 @@ type Props = {
   onSend: (query: string) => void
   onApprovePlan: (planFeedback: string) => void
   onCancelApproval: () => void
-  onPin?: (chartConfig: any, rawData: any) => Promise<void>
 }
 
 export function ChatThread({
@@ -28,7 +27,6 @@ export function ChatThread({
   onSend,
   onApprovePlan,
   onCancelApproval,
-  onPin,
 }: Props) {
   const [draft, setDraft] = useState('')
   const [feedback, setFeedback] = useState('')
@@ -48,22 +46,6 @@ export function ChatThread({
     onSend(q)
   }
 
-  // Hook sự kiện Drill-down từ biểu đồ
-  useEffect(() => {
-    const handleDrilldown = (e: Event) => {
-      const customEvent = e as CustomEvent;
-      const { label, value } = customEvent.detail;
-      onSend(`Cho tôi xem chi tiết dữ liệu của phần: ${label} (Giá trị: ${value})`);
-    };
-
-    window.addEventListener('app:drilldown', handleDrilldown);
-    return () => {
-      window.removeEventListener('app:drilldown', handleDrilldown);
-    };
-  }, [onSend]);
-
-  const [pinningIndex, setPinningIndex] = useState<number | null>(null);
-  
   return (
     <section className="chat-thread">
       <div className="chat-messages">
@@ -102,25 +84,7 @@ export function ChatThread({
               </pre>
             ) : null}
             {m.raw_data && m.raw_data.length > 0 ? <DataTable rows={m.raw_data} /> : null}
-            {m.chart_config ? (
-              <div style={{ position: 'relative', marginTop: '1rem' }}>
-                {onPin && (
-                   <button 
-                     onClick={async () => {
-                       setPinningIndex(i);
-                       await onPin(m.chart_config, m.raw_data);
-                       setPinningIndex(null);
-                     }}
-                     className="btn secondary" 
-                     style={{ position: 'absolute', top: -30, right: 0, zIndex: 10, fontSize: '0.8rem', padding: '4px 8px' }}
-                     disabled={pinningIndex === i}
-                   >
-                     {pinningIndex === i ? '⏳ Đang ghim...' : '📌 Ghim lên Dashboard'}
-                   </button>
-                )}
-                <ChartPlot config={m.chart_config} />
-              </div>
-            ) : null}
+            {m.chart_config ? <ChartPlot config={m.chart_config} /> : null}
           </article>
         ))}
         {pendingApproval ? (
