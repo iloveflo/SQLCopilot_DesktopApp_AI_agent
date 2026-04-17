@@ -28,6 +28,12 @@ export function ConnectionModal({ open, onClose, onConnected }: Props) {
     setServerDbs([])
     setSelectedDbs(new Set())
     setError(null)
+    setPassword('')
+  }
+
+  const handleClose = () => {
+    resetForm()
+    onClose()
   }
 
   const handleConnect = async (e: React.FormEvent) => {
@@ -135,7 +141,7 @@ export function ConnectionModal({ open, onClose, onConnected }: Props) {
             </label>
             {error ? <p className="form-error span-2">{error}</p> : null}
             <div className="modal-actions span-2">
-              <button type="button" className="btn secondary" onClick={onClose}>
+              <button type="button" className="btn secondary" onClick={handleClose}>
                 Hủy
               </button>
               <button type="submit" className="btn primary" disabled={busy}>

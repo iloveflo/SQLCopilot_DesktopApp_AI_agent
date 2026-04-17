@@ -179,6 +179,40 @@ def get_session(session_id: str) -> Optional[dict]:
         "user_id": row[6]
     }
 
+def setup_results_table() -> None:
+    """Khởi tạo bảng chat_message_results để lưu trữ vĩnh viễn các kết quả nặng (Raw Data)."""
+    conn = _get_conn()
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS chat_message_results (
+            result_id    TEXT PRIMARY KEY,
+            data_json    TEXT NOT NULL,
+            created_at   TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+
+def save_message_result(result_id: str, data_any: any) -> None:
+    """Lưu dữ liệu bảng (Raw Data) vào kho lưu trữ vĩnh viễn."""
+    conn = _get_conn()
+    data_json = json.dumps(data_any, ensure_ascii=False)
+    conn.execute(
+        "INSERT OR REPLACE INTO chat_message_results (result_id, data_json, created_at) VALUES (?, ?, ?)",
+        (result_id, data_json, _now_iso())
+    )
+    conn.commit()
+
+def get_message_result(result_id: str) -> any:
+    """Lấy lại dữ liệu bảng từ kho lưu trữ."""
+    conn = _get_conn()
+    row = conn.execute(
+        "SELECT data_json FROM chat_message_results WHERE result_id = ?",
+        (result_id,)
+    ).fetchone()
+    if row:
+        return json.loads(row[0])
+    return None
+
 # Tự động khởi tạo bảng khi module được import
 setup_sessions_table()
 setup_dashboard_table()
+setup_results_table()

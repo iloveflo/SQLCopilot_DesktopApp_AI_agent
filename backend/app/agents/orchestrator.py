@@ -41,7 +41,13 @@ def _format_recent_history(chat_history: list[Dict[str, Any]], max_messages: int
 
 def node_read_schema(state: AgentState):
     from app.db.semantic_cache import get_cached_response
-    cached = get_cached_response(state.get("question", ""))
+    from app.db.connection import connection_manager
+    
+    # 1. Tạo Database Context (Host + DBs) để làm khóa băm cho Cache
+    active_dbs = connection_manager.get_active_databases()
+    db_context = f"{connection_manager.current_host}|{','.join(sorted(active_dbs))}"
+    
+    cached = get_cached_response(state.get("question", ""), db_context=db_context)
     if cached:
         return {
             "schema": "Skipped (Cached)",
@@ -135,18 +141,32 @@ def node_interpret(state: AgentState):
     # 3. Cache (chỉ cache câu lệnh gốc)
     if not state.get("is_cached") and state.get("sql_query"):
         from app.db.semantic_cache import set_cached_response
-        set_cached_response(state["question"], state["sql_query"], state.get("plan"))
+        from app.db.connection import connection_manager
+        active_dbs = connection_manager.get_active_databases()
+        db_context = f"{connection_manager.current_host}|{','.join(sorted(active_dbs))}"
+        set_cached_response(state["question"], state["sql_query"], state.get("plan"), db_context=db_context)
         
-    # 4. Lưu vào lịch sử chat với cấu trúc mới
+    # 4. Đóng gói dữ liệu nặng (Archiving) để giải phóng "não" AI
+    import uuid
+    from app.db.session_store import save_message_result
+    result_id = str(uuid.uuid4())
+    
+    # Lưu toàn bộ kết quả vào kho lưu trữ vĩnh viễn
+    archive_data = {
+        "raw_data": state.get("raw_data"),
+        "multi_results": state.get("multi_results"),
+        "chart_config": chart_config
+    }
+    save_message_result(result_id, archive_data)
+
+    # 5. Lưu vào lịch sử chat (Chỉ lưu ID, không vác theo dữ liệu thô)
     new_memory = [
         {"role": "user", "content": state["question"]},
         {
             "role": "assistant", 
             "content": answer,
             "sql_query": state.get("sql_query"),
-            "raw_data": state.get("raw_data"),
-            "chart_config": chart_config,
-            "multi_results": multi_results
+            "result_id": result_id, # Thẻ thư viện để truy xuất lại sau này
         }
     ]
         

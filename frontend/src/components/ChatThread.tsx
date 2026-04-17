@@ -1,9 +1,10 @@
 import { useRef, useEffect, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import type { ChatMessage } from '../types/api'
+import type { ChatMessage, SubReport } from '../types/api'
 import { DataTable } from './DataTable'
 import { ChartPlot } from './ChartPlot'
+import { api } from '../api/sqlCopilot'
 
 type PendingApproval = { query: string; plan: string }
 
@@ -18,6 +19,122 @@ type Props = {
   onApprovePlan: (planFeedback: string) => void
   onCancelApproval: () => void
   onPinMetric?: (config: unknown, data: unknown) => void
+}
+
+/**
+ * Component con xử lý việc hiển trợ và tải dữ liệu bảng (Lazy Loading)
+ */
+function AssistantMessage({ 
+  msg, 
+  onPinMetric 
+}: { 
+  msg: ChatMessage, 
+  onPinMetric?: (config: unknown, data: unknown) => void 
+}) {
+  const [lazyData, setLazyData] = useState<{
+    raw_data?: any[],
+    multi_results?: SubReport[],
+    chart_config?: any,
+    loading: boolean
+  }>({
+    raw_data: msg.raw_data || undefined,
+    multi_results: msg.multi_results || undefined,
+    chart_config: msg.chart_config || undefined,
+    loading: false
+  });
+
+  useEffect(() => {
+    // Nếu tin nhắn có result_id nhưng chưa có dữ liệu bảng -> Tải từ "Kho lưu trữ"
+    if (msg.result_id && !lazyData.raw_data && !lazyData.multi_results && !lazyData.loading) {
+      setLazyData(prev => ({ ...prev, loading: true }));
+      api.chatFetchResult(msg.result_id)
+        .then(res => {
+          if (res.success && res.data) {
+            setLazyData({
+              raw_data: res.data.raw_data,
+              multi_results: res.data.multi_results,
+              chart_config: res.data.chart_config,
+              loading: false
+            });
+          }
+        })
+        .catch(err => {
+          console.error("Lazy loading failed:", err);
+          setLazyData(prev => ({ ...prev, loading: false }));
+        });
+    }
+  }, [msg.result_id]);
+
+  return (
+    <>
+      <div className="chat-message-content assistant">
+        <div className="markdown-content">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {msg.content}
+          </ReactMarkdown>
+        </div>
+      </div>
+      
+      {lazyData.loading && (
+        <div className="lazy-loading-placeholder">
+          <span className="spinner-inline"></span> Đang tải dữ liệu từ kho lưu trữ...
+        </div>
+      )}
+
+      {/* Hiển thị kết quả đơn lẻ */}
+      {!lazyData.multi_results && (
+        <>
+          {msg.sql_query ? (
+            <pre className="sql-block">
+              <code>{msg.sql_query}</code>
+            </pre>
+          ) : null}
+          {lazyData.raw_data && lazyData.raw_data.length > 0 ? (
+            <DataTable rows={lazyData.raw_data} />
+          ) : null}
+          {lazyData.chart_config ? (
+            <ChartPlot config={lazyData.chart_config} rawData={lazyData.raw_data} onPin={onPinMetric} />
+          ) : null}
+        </>
+      )}
+
+      {/* HIỂN THỊ ĐA BÁO CÁO */}
+      {lazyData.multi_results && lazyData.multi_results.length > 0 && (
+        <div className="multi-reports-container">
+          {lazyData.multi_results.filter(r => r.sql_query || r.raw_data || r.chart_config).map((report, idx) => (
+            <div key={idx} className="report-segment">
+              {idx > 0 && <hr className="reports-divider" />}
+              {report.title && <h4 className="report-title">{report.title}</h4>}
+              {report.sql_query && (
+                <details className="sql-details">
+                  <summary>Chi tiết truy vấn</summary>
+                  <pre className="sql-block mini">
+                    <code>{report.sql_query}</code>
+                  </pre>
+                </details>
+              )}
+              {report.success ? (
+                <>
+                  {report.raw_data && report.raw_data.length > 0 && (
+                    <DataTable rows={report.raw_data} />
+                  )}
+                  {report.chart_config && (
+                    <ChartPlot 
+                      config={report.chart_config} 
+                      rawData={report.raw_data} 
+                      onPin={onPinMetric} 
+                    />
+                  )}
+                </>
+              ) : (
+                <div className="error-text">❌ Lỗi: {report.error}</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
 }
 
 export function ChatThread({
@@ -81,68 +198,10 @@ export function ChatThread({
 
         {messages.map((m, i) => (
           <article key={i} className={`bubble ${m.role === 'user' ? 'user' : 'assistant'}`}>
-            <div className={`chat-message-content ${m.role}`}>
-              {m.role === 'assistant' ? (
-                <div className="markdown-content">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {m.content}
-                  </ReactMarkdown>
-                </div>
-              ) : (
-                m.content
-              )}
-            </div>
-            
-            {/* Hiển thị kết quả đơn lẻ (Cũ) */}
-            {!m.multi_results && (
-              <>
-                {m.sql_query ? (
-                  <pre className="sql-block">
-                    <code>{m.sql_query}</code>
-                  </pre>
-                ) : null}
-                {m.raw_data && m.raw_data.length > 0 ? <DataTable rows={m.raw_data} /> : null}
-                {m.chart_config ? <ChartPlot config={m.chart_config} rawData={m.raw_data} onPin={onPinMetric} /> : null}
-              </>
-            )}
-
-            {/* HIỂN THỊ ĐA BÁO CÁO (MỚI) */}
-            {m.multi_results && m.multi_results.length > 0 && (
-              <div className="multi-reports-container">
-                {m.multi_results.filter(r => r.sql_query || r.raw_data || r.chart_config).map((report, idx) => (
-                  <div key={idx} className="report-segment">
-                    {idx > 0 && <hr className="reports-divider" />}
-                    
-                    {report.title && <h4 className="report-title">{report.title}</h4>}
-                    
-                    {report.sql_query && (
-                      <details className="sql-details">
-                        <summary>Chi tiết truy vấn</summary>
-                        <pre className="sql-block mini">
-                          <code>{report.sql_query}</code>
-                        </pre>
-                      </details>
-                    )}
-
-                    {report.success ? (
-                      <>
-                        {report.raw_data && report.raw_data.length > 0 && (
-                          <DataTable rows={report.raw_data} />
-                        )}
-                        {report.chart_config && (
-                          <ChartPlot 
-                            config={report.chart_config} 
-                            rawData={report.raw_data} 
-                            onPin={onPinMetric} 
-                          />
-                        )}
-                      </>
-                    ) : (
-                      <div className="error-text">❌ Lỗi: {report.error}</div>
-                    )}
-                  </div>
-                ))}
-              </div>
+            {m.role === 'user' ? (
+              <div className="chat-message-content user">{m.content}</div>
+            ) : (
+              <AssistantMessage msg={m} onPinMetric={onPinMetric} />
             )}
           </article>
         ))}
@@ -188,7 +247,15 @@ export function ChatThread({
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder={isApiKeySet === false ? 'Vui lòng nạp API Key trước khi sử dụng...' : (pendingApproval ? 'Hoàn tất duyệt kế hoạch ở trên…' : 'Hỏi bằng tiếng Việt…')}
+          placeholder={
+            isApiKeySet === false 
+              ? 'Vui lòng nạp API Key trước khi sử dụng...' 
+              : busy 
+                ? 'AI đang suy nghĩ, vui lòng đợi giây lát...' 
+                : pendingApproval 
+                  ? 'Hoàn tất duyệt kế hoạch ở trên…' 
+                  : 'Hỏi bằng tiếng Việt…'
+          }
           disabled={busy || !!pendingApproval || isApiKeySet === false}
           minLength={2}
         />

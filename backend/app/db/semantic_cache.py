@@ -28,26 +28,28 @@ def _get_cache_conn():
 
 cache_conn = _get_cache_conn()
 
-def _hash_question(question: str) -> str:
-    """Chuẩn hóa và băm câu hỏi để tìm kiếm nhanh."""
+def _hash_question(question: str, db_context: str = "") -> str:
+    """Chuẩn hóa và băm câu hỏi kèm theo ngữ cảnh Database để tránh nhầm lẫn."""
     clean_q = question.strip().lower()
-    return hashlib.md5(clean_q.encode()).hexdigest()
+    # Key = DatabaseContext|Question
+    total_key = f"{db_context}|{clean_q}"
+    return hashlib.md5(total_key.encode()).hexdigest()
 
-def get_cached_response(question: str) -> dict | None:
-    """Tìm kiếm câu trả lời trong cache (Exact Match hoặc Simple Hash)."""
-    q_hash = _hash_question(question)
+def get_cached_response(question: str, db_context: str = "") -> dict | None:
+    """Tìm kiếm câu trả lời trong cache với ngữ cảnh Database cụ thể."""
+    q_hash = _hash_question(question, db_context)
     cursor = cache_conn.execute(
         "SELECT sql_query, plan FROM semantic_cache WHERE q_hash = ?", (q_hash,)
     )
     row = cursor.fetchone()
     if row:
-        logger.info(f"Semantic Cache Hit for: {question}")
+        logger.info(f"Semantic Cache Hit for: {question} (Context: {db_context})")
         return {"sql_query": row[0], "plan": row[1]}
     return None
 
-def set_cached_response(question: str, sql: str, plan: str = None) -> None:
-    """Lưu kết quả vào cache."""
-    q_hash = _hash_question(question)
+def set_cached_response(question: str, sql: str, plan: str = None, db_context: str = "") -> None:
+    """Lưu kết quả vào cache với ngữ cảnh Database cụ thể."""
+    q_hash = _hash_question(question, db_context)
     now = datetime.now(timezone.utc).isoformat()
     try:
         cache_conn.execute(

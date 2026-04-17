@@ -23,6 +23,7 @@ function chatResponseToMessage(res: ChatResponse): ChatMessage {
     raw_data: res.raw_data ?? undefined,
     chart_config: res.chart_config ?? undefined,
     multi_results: res.multi_results ?? undefined,
+    result_id: res.result_id ?? undefined,
   }
 }
 

@@ -54,6 +54,7 @@ export type ChatResponse = {
   multi_results?: SubReport[] | null
   is_success: boolean
   error_message?: string | null
+  result_id?: string | null
 }
 
 export type SubReport = {
@@ -72,6 +73,7 @@ export type ChatMessage = {
   raw_data?: Record<string, unknown>[] | null
   chart_config?: PlotlyChartConfig | null
   multi_results?: SubReport[] | null
+  result_id?: string | null
 }
 
 export type ChatHistoryResponse = {

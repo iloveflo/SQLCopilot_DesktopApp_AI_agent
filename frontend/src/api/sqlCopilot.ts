@@ -157,6 +157,9 @@ export const api = {
   chatHistory: (sessionId: string) =>
     requestJson<ChatHistoryResponse>(`/chat/history/${encodeURIComponent(sessionId)}`),
 
+  chatFetchResult: (resultId: string) =>
+    requestJson<{ result_id: string; data: any; success: boolean }>(`/chat/result/${encodeURIComponent(resultId)}`),
+
   adminCommand: (body: AdminCommandRequest) =>
     requestJson<AdminCommandResponse>('/admin/command', {
       method: 'POST',
