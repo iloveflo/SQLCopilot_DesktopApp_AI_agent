@@ -37,15 +37,21 @@ function AssistantMessage({
     chart_config?: any,
     loading: boolean
   }>({
-    raw_data: msg.raw_data || undefined,
-    multi_results: msg.multi_results || undefined,
-    chart_config: msg.chart_config || undefined,
     loading: false
   });
 
+  // Ưu tiên dữ liệu từ tin nhắn đang nhận trực tiếp (Props)
+  // Nếu không có (tin nhắn cũ) mới dùng đến dữ liệu đã tải từ kho (LazyData)
+  const currentData = {
+    raw_data: msg.raw_data || lazyData.raw_data,
+    multi_results: msg.multi_results || lazyData.multi_results,
+    chart_config: msg.chart_config || lazyData.chart_config,
+  };
+
   useEffect(() => {
-    // Nếu tin nhắn có result_id nhưng chưa có dữ liệu bảng -> Tải từ "Kho lưu trữ"
-    if (msg.result_id && !lazyData.raw_data && !lazyData.multi_results && !lazyData.loading) {
+    // Chỉ tải từ kho nếu tin nhắn CÓ ID nhưng KHÔNG CÓ dữ liệu trong Props
+    const hasData = msg.raw_data || msg.multi_results || msg.chart_config;
+    if (msg.result_id && !hasData && !lazyData.raw_data && !lazyData.multi_results && !lazyData.loading) {
       setLazyData(prev => ({ ...prev, loading: true }));
       api.chatFetchResult(msg.result_id)
         .then(res => {
@@ -63,7 +69,7 @@ function AssistantMessage({
           setLazyData(prev => ({ ...prev, loading: false }));
         });
     }
-  }, [msg.result_id]);
+  }, [msg.result_id, msg.raw_data, msg.multi_results]);
 
   return (
     <>
@@ -77,31 +83,31 @@ function AssistantMessage({
       
       {lazyData.loading && (
         <div className="lazy-loading-placeholder">
-          <span className="spinner-inline"></span> Đang tải dữ liệu từ kho lưu trữ...
+          <span className="spinner-inline"></span> Đang tải dữ liệu từ kho...
         </div>
       )}
 
       {/* Hiển thị kết quả đơn lẻ */}
-      {!lazyData.multi_results && (
+      {!currentData.multi_results && (
         <>
           {msg.sql_query ? (
             <pre className="sql-block">
               <code>{msg.sql_query}</code>
             </pre>
           ) : null}
-          {lazyData.raw_data && lazyData.raw_data.length > 0 ? (
-            <DataTable rows={lazyData.raw_data} />
+          {currentData.raw_data && currentData.raw_data.length > 0 ? (
+            <DataTable rows={currentData.raw_data} />
           ) : null}
-          {lazyData.chart_config ? (
-            <ChartPlot config={lazyData.chart_config} rawData={lazyData.raw_data} onPin={onPinMetric} />
+          {currentData.chart_config ? (
+            <ChartPlot config={currentData.chart_config} rawData={currentData.raw_data} onPin={onPinMetric} />
           ) : null}
         </>
       )}
 
       {/* HIỂN THỊ ĐA BÁO CÁO */}
-      {lazyData.multi_results && lazyData.multi_results.length > 0 && (
+      {currentData.multi_results && currentData.multi_results.length > 0 && (
         <div className="multi-reports-container">
-          {lazyData.multi_results.filter(r => r.sql_query || r.raw_data || r.chart_config).map((report, idx) => (
+          {currentData.multi_results.filter(r => r.sql_query || r.raw_data || r.chart_config).map((report, idx) => (
             <div key={idx} className="report-segment">
               {idx > 0 && <hr className="reports-divider" />}
               {report.title && <h4 className="report-title">{report.title}</h4>}
