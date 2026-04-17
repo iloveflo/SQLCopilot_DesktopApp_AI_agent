@@ -10,6 +10,8 @@ from app.agents.nl2sql import generate_sql
 from app.agents.query_runner import execute_safe_query
 from app.agents.interpreter import interpret_results
 from app.agents.visualizer import generate_chart_config
+from app.agents.llm_setup import get_llm
+from pydantic import BaseModel, Field
 
 # 1. Định nghĩa Data Structure truyền giữa các Node (Agents)
 class AgentState(TypedDict):
@@ -123,18 +125,50 @@ def node_interpret(state: AgentState):
 
 # 3. Định nghĩa Conditional Routing
 def route_after_reader(state: AgentState) -> str:
-    """Nên lập kế hoạch hay quất luôn sinh Code?"""
+    """Nên lập kế hoạch hay quất luôn sinh Code? (Lọc 3 lớp)"""
     if state.get("is_cached"):
         return "db_executor"
 
-    if not state.get("is_approved", False):
-        import re
-        q = state.get("question", "").lower()
-        is_simple = bool(re.search(r"^(hiển thị|đếm|bao nhiêu|có bao nhiêu|liệt kê|top|cho xem)", q))
-        if is_simple:
+    if state.get("is_approved", False):
+        return "sql_coder"
+
+    # --- LỚP 1: Regex tiếng Việt chuyên sâu (0 Token) ---
+    import re
+    q = state.get("question", "").lower()
+    # Các từ khóa tiếng Việt hiển nhiên cho truy vấn đơn giản (Bỏ ^ để bắt ở bất kỳ đâu)
+    viet_regex = r"(hiển thị|liệt kê|cho xem|danh sách|đếm|bao nhiêu|có bao nhiêu|ai là|đâu là|tìm|lọc|top|cao nhất|thấp nhất|lớn nhất|nhỏ nhất|giá|tên|ngày|đắt nhất|rẻ nhất)"
+    if bool(re.search(viet_regex, q)):
+        return "sql_coder"
+
+    # --- LỚP 2: Semantic Router (LLM Flash - Tiết kiệm Token) ---
+    try:
+        class RoutingDecision(BaseModel):
+            is_complex: bool = Field(description="True nếu câu hỏi yêu cầu tính toán logic kinh doanh phức tạp, join nhiều hơn 2 bảng, hoặc đòi hỏi suy luận nhiều bước. False nếu chỉ là truy vấn dữ liệu cơ bản.")
+
+        llm = get_llm(task="router", temperature=0.0).with_structured_output(RoutingDecision)
+        
+        # Chỉ gửi câu hỏi với ví dụ minh họa để AI Router "mạnh dạn" chọn SQL Coder
+        prompt = f"""Phân loại độ phức tạp của câu hỏi SQL: '{state['question']}'
+        
+        VÍ DỤ ĐƠN GIẢN (is_complex=False): 
+        - "Ai là người mua nhiều nhất?"
+        - "Sản phẩm nào đắt tiền nhất?"
+        - "Lấy thông tin đơn hàng của khách hàng A"
+        
+        VÍ DỤ PHỨC TẠP (is_complex=True):
+        - "Phân tích xu hướng doanh thu và gợi ý mặt hàng cần nhập kho"
+        - "So sánh hiệu suất nhân viên dựa trên doanh số và tỷ lệ phản hồi khách hàng"
+        """
+        decision = llm.invoke(prompt)
+        
+        if not decision.is_complex:
             return "sql_coder"
-        return "planner"
-    return "sql_coder"
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Lỗi Router LLM: {e}. Mặc định chuyển sang Planner cho an toàn.")
+
+    # --- LỚP 3: Planner (Giao cho Agent lập kế hoạch chi tiết) ---
+    return "planner"
 
 def should_retry(state: AgentState) -> str:
     """Quyết định luồng đi tiếp dựa vào state hiện tại."""

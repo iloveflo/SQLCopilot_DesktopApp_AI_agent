@@ -7,6 +7,7 @@ MODEL_TASK_MAP = {
     "interpreter": "gemma-4-31b-it",  
     "visualizer": "gemma-4-31b-it",   
     "admin": "gemma-4-31b-it",          
+    "router": "gemini-3.1-flash-lite-preview",
     "default": "gemma-4-31b-it",
 }
 
@@ -16,6 +17,7 @@ DEFAULT_MAX_TOKENS = {
     "interpreter": 2048, 
     "visualizer": 512,
     "admin": 1024,
+    "router": 100,
     "default": 1024,
 }
 

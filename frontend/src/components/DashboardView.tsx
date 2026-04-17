@@ -7,9 +7,10 @@ type Props = {
   isOpen: boolean
   onClose: () => void
   version?: number
+  onAddToast?: (message: string, type: 'success' | 'error' | 'info') => void
 }
 
-export function DashboardView({ isOpen, onClose, version = 0 }: Props) {
+export function DashboardView({ isOpen, onClose, version = 0, onAddToast }: Props) {
   const [metrics, setMetrics] = useState<PinnedMetric[]>([])
   const [loading, setLoading] = useState(false)
 
@@ -32,12 +33,15 @@ export function DashboardView({ isOpen, onClose, version = 0 }: Props) {
   }, [isOpen, version])
 
   const handleUnpin = async (id: number) => {
+    // Để giữ tính an toàn, confirm vẫn có thể dùng nhưng lý tưởng là một modal đẹp.
+    // Tạm thời tôi chuyển sang Toast cho phần thông báo kết quả.
     if (!confirm('Bạn có chắc chắn muốn xóa biểu đồ này khỏi Dashboard?')) return
     try {
       await api.dashboardUnpin(id)
       setMetrics((prev) => prev.filter((m) => m.id !== id))
+      if (onAddToast) onAddToast('Đã xóa biểu đồ khỏi Dashboard.', 'info')
     } catch {
-      alert('Lỗi khi bỏ ghim biểu đồ.')
+      if (onAddToast) onAddToast('Lỗi khi bỏ ghim biểu đồ.', 'error')
     }
   }
 

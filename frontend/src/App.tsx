@@ -543,6 +543,7 @@ export default function App() {
         isOpen={showDashboard} 
         onClose={() => setShowDashboard(false)} 
         version={dashboardVersion}
+        onAddToast={addToast}
       />
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
