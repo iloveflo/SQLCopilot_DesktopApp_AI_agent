@@ -97,7 +97,7 @@ export function ChatThread({
             {/* HIỂN THỊ ĐA BÁO CÁO (MỚI) */}
             {m.multi_results && m.multi_results.length > 0 && (
               <div className="multi-reports-container">
-                {m.multi_results.map((report, idx) => (
+                {m.multi_results.filter(r => r.sql_query || r.raw_data || r.chart_config).map((report, idx) => (
                   <div key={idx} className="report-segment">
                     {idx > 0 && <hr className="reports-divider" />}
                     
@@ -105,7 +105,7 @@ export function ChatThread({
                     
                     {report.sql_query && (
                       <details className="sql-details">
-                        <summary>Xem SQL truy vấn</summary>
+                        <summary>Chi tiết truy vấn</summary>
                         <pre className="sql-block mini">
                           <code>{report.sql_query}</code>
                         </pre>

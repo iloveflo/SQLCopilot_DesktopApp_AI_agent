@@ -248,6 +248,7 @@ export default function App() {
           await selectSession(s.session_id)
         }
       }
+      addToast('Đã xóa đoạn chat thành công', 'success')
     } catch (e) {
       setBanner(e instanceof ApiError ? e.message : 'Xóa thất bại')
     }

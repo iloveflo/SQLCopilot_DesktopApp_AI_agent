@@ -84,7 +84,12 @@ export function SessionSidebar({
         confirmLabel="Xác nhận xóa"
         type="danger"
         onCancel={() => setDeletingId(null)}
-        onConfirm={() => deletingId && onDelete(deletingId)}
+        onConfirm={() => {
+          if (deletingId) {
+            onDelete(deletingId)
+            setDeletingId(null)
+          }
+        }}
       />
     </aside>
   )
