@@ -107,19 +107,27 @@ def node_interpret(state: AgentState):
     # 1. Phân tích kết quả
     answer = interpret_results(state["question"], state["sql_query"], state["raw_data"])
     
-    # 2. Xử lý biểu đồ (Đơn lẻ hoặc Đa khối)
+    # 2. Xử lý biểu đồ (Chỉ kích hoạt khi có yêu cầu rõ ràng để tiết kiệm Token và Thời gian)
+    import re
+    viz_keywords = r"(biểu đồ|đồ thị|vẽ|trực quan|chart|graph|plot|visualize)"
+    is_viz_requested = bool(re.search(viz_keywords, state["question"].lower()))
+    
     multi_results = state.get("multi_results")
     chart_config = None
     
-    if multi_results:
-        # Nếu có nhiều kết quả, sinh biểu đồ cho từng cái
-        for res in multi_results:
-            if res.get("data") and res.get("success"):
-                res["chart_config"] = generate_chart_config(state["question"], res["data"])
+    if is_viz_requested:
+        if multi_results:
+            # Nếu có nhiều kết quả, sinh biểu đồ cho từng cái
+            for res in multi_results:
+                if res.get("data") and res.get("success"):
+                    res["chart_config"] = generate_chart_config(state["question"], res["data"])
+        else:
+            # Chỉ có 1 kết quả
+            if state.get("raw_data"):
+                chart_config = generate_chart_config(state["question"], state["raw_data"])
     else:
-        # Chỉ có 1 kết quả
-        if state.get("raw_data"):
-            chart_config = generate_chart_config(state["question"], state["raw_data"])
+        # Nếu không yêu cầu vẽ, đảm bảo chart_config là None
+        chart_config = None
         
     # 3. Cache (chỉ cache câu lệnh gốc)
     if not state.get("is_cached") and state.get("sql_query"):

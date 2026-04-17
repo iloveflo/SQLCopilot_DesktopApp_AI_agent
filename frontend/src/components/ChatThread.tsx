@@ -1,4 +1,6 @@
 import { useRef, useEffect, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import type { ChatMessage } from '../types/api'
 import { DataTable } from './DataTable'
 import { ChartPlot } from './ChartPlot'
@@ -79,7 +81,17 @@ export function ChatThread({
 
         {messages.map((m, i) => (
           <article key={i} className={`bubble ${m.role === 'user' ? 'user' : 'assistant'}`}>
-            <div className="bubble-content">{m.content}</div>
+            <div className={`chat-message-content ${m.role}`}>
+              {m.role === 'assistant' ? (
+                <div className="markdown-content">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {m.content}
+                  </ReactMarkdown>
+                </div>
+              ) : (
+                m.content
+              )}
+            </div>
             
             {/* Hiển thị kết quả đơn lẻ (Cũ) */}
             {!m.multi_results && (

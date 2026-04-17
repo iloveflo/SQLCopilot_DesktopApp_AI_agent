@@ -33,13 +33,15 @@ Nhiệm vụ của bạn là phân tích cấu trúc dữ liệu đầu vào, qu
    - CHỈ quyết định vẽ biểu đồ (`should_visualize: true`) NẾU dữ liệu là một mảng có chứa ít nhất 1 cột Danh mục/Thời gian VÀ 1 cột Số liệu (Int/Float).
    - TỪ CHỐI vẽ biểu đồ (`should_visualize: false` và `chart_type: "none"`) NẾU dữ liệu chỉ trả về 1 con số đơn lẻ (Ví dụ: đếm tổng số user), hoặc toàn bộ là văn bản không chứa dữ liệu để đo lường.
 
-3. QUY TẮC CHỌN LOẠI BIỂU ĐỒ (CHART_TYPE ENUM STRICTNESS):
-   - Nếu Trục X là Thời gian (ngày, tháng, năm) -> ƯU TIÊN dùng: `line` (Biểu đồ đường) hoặc `area` (Miền tích lũy).
-   - Nếu Trục X là Danh mục (tên sản phẩm, chi nhánh, trạng thái...):
-       + Để so sánh độ lớn thông thường -> BẮT BUỘC dùng: `bar` (Biểu đồ cột).
-       + Để xem tỷ trọng (phần trăm) VÀ số lượng danh mục <= 7 -> ĐƯỢC PHÉP dùng: `pie` (Biểu đồ tròn).
-   - Nếu muốn xem phân bổ điểm hoặc tương quan 2 con số -> ĐƯỢC PHÉP dùng: `scatter` (Biểu đồ phân tán).
-   - CẢNH BÁO ĐỊNH DẠNG: Bạn CHỈ ĐƯỢC PHÉP trả về 1 trong 6 từ khóa sau: "bar", "line", "pie", "area", "scatter", hoặc "none". BẮT BUỘC viết thường toàn bộ, không có dấu cách, không viết hoa.
+3. QUY TẮC CHỌN LOẠI BIỂU ĐỒ (ƯU TIÊN SỰ ĐA DẠNG VÀ CHÍNH XÁC):
+   - TRUY VẤN THỜI GIAN (Time-series): 
+       + BẮT BUỘC dùng `line` hoặc `area`. Dùng `area` nếu muốn nhấn mạnh vào độ lớn của tổng thể tích lũy theo thời gian.
+   - SO SÁNH DANH MỤC (Categorical):
+       + Nếu số lượng danh mục <= 10 và muốn so sánh độ lớn -> Dùng `bar`.
+       + Nếu muốn xem Tỷ trọng/Cơ cấu (%) VÀ số danh mục ít (<= 6) -> ƯU TIÊN dùng `pie`.
+   - TƯƠNG QUAN & PHÂN BỔ (Relationship/Distribution):
+       + Nếu có 2 cột số liệu muốn so sánh tương quan HOẶC số lượng điểm dữ liệu rất lớn (> 30 điểm) -> ƯU TIÊN dùng `scatter` để tránh làm rối biểu đồ cột.
+   - XU HƯỚNG TĂNG TRƯỞNG: Nếu dữ liệu thể hiện sự tăng/giảm liên tục -> Nên dùng `line` thay vì `bar`.
 
 4. QUY TẮC GHÉP CỘT (AXIS MAPPING):
    - `x_column`: BẮT BUỘC chọn đúng 1 tên cột chứa Danh mục hoặc Thời gian.
