@@ -1,12 +1,15 @@
 <div align="center">
   <img src="https://img.icons8.com/plasticine/200/database.png" alt="SQL Copilot Logo" width="120" />
   <h1>🚀 SQL Copilot Pro AI</h1>
-  <p><strong>Hệ Điều Hành Dữ Liệu Thông Minh - Multi-Agent AI Orchestration Engine</strong></p>
+  <p><strong>Hệ Điều Hành Dữ Liệu Thông Minh - Database IDE Thế Hệ Mới</strong></p>
   
-  <p>
-    <a href="https://sql-copilot-desktop-app-ai-agent-we.vercel.app/"><img src="https://img.shields.io/badge/Demo-Live_Website-blue?style=for-the-badge&logo=vercel" alt="Demo" /></a>
-    <a href="#"><img src="https://img.shields.io/badge/Release-v2.1.0_Stable-green?style=for-the-badge&logo=github" alt="Release" /></a>
-    <img src="https://img.shields.io/badge/Security-PII_Filtered-red?style=for-the-badge" alt="Security" />
+  <p align="center">
+    <a href="https://sql-copilot-desktop-app-ai-agent-we.vercel.app/">
+      <img src="https://img.shields.io/badge/TRUY_CẬP_WEBSITE_CHÍNH_THỨC-0052FF?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Official Website" />
+    </a>
+    <a href="https://github.com/iloveflo/SQLCopilot_DesktopApp_AI_agent/releases/latest">
+      <img src="https://img.shields.io/badge/TẢI_VỀ_BẢN_DESKTOP-FF4B4B?style=for-the-badge&logo=windows&logoColor=white" alt="Download Desktop" />
+    </a>
   </p>
 
   <p>
