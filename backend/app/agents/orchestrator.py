@@ -104,10 +104,7 @@ def node_execute(state: AgentState):
         return {"sql_error": result["error"], "retries": current_retries + 1}
 
 def node_interpret(state: AgentState):
-    # 1. Phân tích kết quả
-    answer = interpret_results(state["question"], state["sql_query"], state["raw_data"])
-    
-    # 2. Xử lý biểu đồ (Chỉ kích hoạt khi có yêu cầu rõ ràng để tiết kiệm Token và Thời gian)
+    # 1. Xác định yêu cầu biểu đồ (để biết có cần rút gọn văn bản hay không)
     import re
     viz_keywords = r"(biểu đồ|đồ thị|vẽ|trực quan|chart|graph|plot|visualize)"
     is_viz_requested = bool(re.search(viz_keywords, state["question"].lower()))
@@ -115,6 +112,7 @@ def node_interpret(state: AgentState):
     multi_results = state.get("multi_results")
     chart_config = None
     
+    # 2. Xử lý biểu đồ
     if is_viz_requested:
         if multi_results:
             # Nếu có nhiều kết quả, sinh biểu đồ cho từng cái
@@ -125,9 +123,14 @@ def node_interpret(state: AgentState):
             # Chỉ có 1 kết quả
             if state.get("raw_data"):
                 chart_config = generate_chart_config(state["question"], state["raw_data"])
-    else:
-        # Nếu không yêu cầu vẽ, đảm bảo chart_config là None
-        chart_config = None
+    
+    # 3. Phân tích kết quả (Truyền cờ is_viz_requested để AI tự động rút gọn chữ nếu đã có biểu đồ)
+    answer = interpret_results(
+        state["question"], 
+        state["sql_query"], 
+        state["raw_data"], 
+        has_chart=is_viz_requested
+    )
         
     # 3. Cache (chỉ cache câu lệnh gốc)
     if not state.get("is_cached") and state.get("sql_query"):

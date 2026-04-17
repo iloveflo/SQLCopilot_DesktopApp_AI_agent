@@ -15,31 +15,38 @@ def _extract_gemma_content(raw_content) -> str:
         ])
     return str(raw_content)
 
-def interpret_results(question: str, sql: str, raw_data: list) -> str:
+def interpret_results(question: str, sql: str, raw_data: list, has_chart: bool = False) -> str:
     llm = get_llm(task="interpreter", temperature=0.3)
     
     # Tránh nhồi quá nhiều data làm tràn Context Window
     safe_data = raw_data[:50] if raw_data else []
     data_str = json.dumps(safe_data, ensure_ascii=False, default=str)
     
-    system_prompt = """Bạn là một Chuyên gia Phân tích Dữ liệu Cao cấp (Senior Executive Data Analyst).
-Nhiệm vụ của bạn là biến dữ liệu thô từ SQL thành một báo cáo kinh doanh có chiều sâu, chuyên nghiệp và dễ hiểu.
+    system_prompt = f"""Bạn là một Chuyên gia Phân tích Dữ liệu Cao cấp (Senior Executive Data Analyst).
+Nhiệm vụ của bạn là nhận xét về dữ liệu thô từ SQL.
 
 === DỮ LIỆU ĐẦU VÀO ===
-- Truy vấn SQL: {sql}
-- Dữ liệu thô: {data}
+- Truy vấn SQL: {{sql}}
+- Dữ liệu thô: {{data}}
+- Có biểu đồ đi kèm: {"Có" if has_chart else "Không"}
 
-=== CẤU TRÚC BÁO CÁO (BẮT BUỘC) ===
-1. **Tóm tắt điều hành (Executive Summary):** 1-2 câu tóm gọn kết quả quan trọng nhất.
-2. **Bảng dữ liệu (Data Evidence):** Sử dụng Markdown Table để hiển thị dữ liệu nếu có >= 2 dòng. Đặt tên cột tiếng Việt dễ hiểu.
-3. **Phân tích chuyên sâu (Insights):** Sử dụng danh sách (bullet points) để chỉ ra các xu hướng, điểm bất thường, hoặc tỷ trọng đáng chú ý. 
-4. **Gợi ý/Dự báo (Actionable Advice):** Một nhận xét ngắn về ý nghĩa kinh doanh của kết quả này.
+=== QUY TẮC THÍCH ỨNG (BẮT BUỘC) ===
+1. **TRƯỜNG HỢP DANH SÁCH THÔ (LISTING):** Nếu người dùng chỉ yêu cầu liệt kê danh sách (ví dụ: "Danh sách khách hàng", "Xem các đơn hàng..."):
+   - TUYỆT ĐỐI KHÔNG tạo bảng Markdown (UI đã có bảng chuyên dụng).
+   - Chỉ trả lời duy nhất 1-2 câu tóm tắt (Ví dụ: "Đây là danh sách 10 khách hàng mới nhất trong hệ thống.").
 
-=== KỶ LUẬT TRÌNH BÀY ===
-- **Sử dụng Markdown chuẩn:** BẮT BUỘC dùng bảng (| --- |), in đậm (**số liệu**), và danh sách (- ).
-- **Tư duy Business:** Đừng chỉ đọc số, hãy giải thích số đó nói lên điều gì về tình hình hiện tại.
-- **Ngôn ngữ:** Tiếng Việt chuyên nghiệp, quyết đoán nhưng lịch sự.
-- **Độ dài:** Không giới hạn cứng, nhưng cần súc tích. Tập trung vào chất lượng Insight hơn là số lượng chữ.
+2. **TRƯỜNG HỢP CÓ BIỂU ĐỒ (HAS CHART):** 
+   - Nếu có biểu đồ đi kèm (`has_chart=True`), hãy tập trung vào biểu đồ.
+   - Trả lời cực kỳ ngắn gọn (tối đa 2 câu). Không lặp lại số liệu đã có trên biểu đồ.
+
+3. **TRƯỜNG HỢP PHÂN TÍCH CHUYÊN SÂU (ADVANCED ANALYSIS):** 
+   - Chỉ khi người dùng yêu cầu phân tích, so sánh, hoặc tìm xu hướng mà KHÔNG có biểu đồ:
+   - Hãy trình bày chuyên sâu với: Tóm tắt -> Nhận xét Insights (Bullet points) -> Gợi ý.
+   - Ưu tiên dùng chữ in đậm (**số liệu**) để làm nổi bật.
+
+=== KỶ LUẬT ===
+- Ngôn ngữ: Tiếng Việt chuyên nghiệp.
+- Không chào hỏi, không rườm rà.
 """
     prompt = ChatPromptTemplate.from_messages([
         ("system", system_prompt),
