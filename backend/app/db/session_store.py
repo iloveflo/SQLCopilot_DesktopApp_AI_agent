@@ -194,7 +194,8 @@ def setup_results_table() -> None:
 def save_message_result(result_id: str, data_any: any) -> None:
     """Lưu dữ liệu bảng (Raw Data) vào kho lưu trữ vĩnh viễn."""
     conn = _get_conn()
-    data_json = json.dumps(data_any, ensure_ascii=False)
+    # default=str giúp xử lý các kiểu dữ liệu không chuẩn như Decimal, datetime...
+    data_json = json.dumps(data_any, ensure_ascii=False, default=str)
     conn.execute(
         "INSERT OR REPLACE INTO chat_message_results (result_id, data_json, created_at) VALUES (?, ?, ?)",
         (result_id, data_json, _now_iso())
