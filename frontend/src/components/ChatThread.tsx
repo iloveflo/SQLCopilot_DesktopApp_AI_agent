@@ -80,13 +80,58 @@ export function ChatThread({
         {messages.map((m, i) => (
           <article key={i} className={`bubble ${m.role === 'user' ? 'user' : 'assistant'}`}>
             <div className="bubble-content">{m.content}</div>
-            {m.sql_query ? (
-              <pre className="sql-block">
-                <code>{m.sql_query}</code>
-              </pre>
-            ) : null}
-            {m.raw_data && m.raw_data.length > 0 ? <DataTable rows={m.raw_data} /> : null}
-            {m.chart_config ? <ChartPlot config={m.chart_config} rawData={m.raw_data} onPin={onPinMetric} /> : null}
+            
+            {/* Hiển thị kết quả đơn lẻ (Cũ) */}
+            {!m.multi_results && (
+              <>
+                {m.sql_query ? (
+                  <pre className="sql-block">
+                    <code>{m.sql_query}</code>
+                  </pre>
+                ) : null}
+                {m.raw_data && m.raw_data.length > 0 ? <DataTable rows={m.raw_data} /> : null}
+                {m.chart_config ? <ChartPlot config={m.chart_config} rawData={m.raw_data} onPin={onPinMetric} /> : null}
+              </>
+            )}
+
+            {/* HIỂN THỊ ĐA BÁO CÁO (MỚI) */}
+            {m.multi_results && m.multi_results.length > 0 && (
+              <div className="multi-reports-container">
+                {m.multi_results.map((report, idx) => (
+                  <div key={idx} className="report-segment">
+                    {idx > 0 && <hr className="reports-divider" />}
+                    
+                    {report.title && <h4 className="report-title">{report.title}</h4>}
+                    
+                    {report.sql_query && (
+                      <details className="sql-details">
+                        <summary>Xem SQL truy vấn</summary>
+                        <pre className="sql-block mini">
+                          <code>{report.sql_query}</code>
+                        </pre>
+                      </details>
+                    )}
+
+                    {report.success ? (
+                      <>
+                        {report.raw_data && report.raw_data.length > 0 && (
+                          <DataTable rows={report.raw_data} />
+                        )}
+                        {report.chart_config && (
+                          <ChartPlot 
+                            config={report.chart_config} 
+                            rawData={report.raw_data} 
+                            onPin={onPinMetric} 
+                          />
+                        )}
+                      </>
+                    ) : (
+                      <div className="error-text">❌ Lỗi: {report.error}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </article>
         ))}
         {pendingApproval ? (

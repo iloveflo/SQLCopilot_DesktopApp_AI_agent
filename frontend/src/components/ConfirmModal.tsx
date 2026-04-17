@@ -1,54 +1,67 @@
+import { useState, useEffect } from 'react';
+
 type Props = {
-  open: boolean
-  title: string
-  message: string
-  onClose: () => void
-  onConfirm: () => void
-  confirmText?: string
-  isDanger?: boolean
-}
+  isOpen: boolean;
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  type?: 'danger' | 'primary' | 'warning';
+};
 
 export function ConfirmModal({
-  open,
+  isOpen,
   title,
   message,
-  onClose,
+  confirmLabel = 'Xác nhận',
+  cancelLabel = 'Hủy',
   onConfirm,
-  confirmText = 'Xác nhận',
-  isDanger = true,
+  onCancel,
+  type = 'primary'
 }: Props) {
-  if (!open) return null
+  const [isShaking, setIsShaking] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      triggerShake();
+    }
+  };
+
+  const triggerShake = () => {
+    setIsShaking(true);
+    setTimeout(() => setIsShaking(false), 500);
+  };
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal panel confirm-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
-        <div className="modal-head">
-          <h2 style={{ color: isDanger ? '#dc2626' : 'inherit' }}>{title}</h2>
-          <button type="button" className="btn icon" onClick={onClose} aria-label="Đóng">
-            ×
-          </button>
+    <div className="modal-overlay" onClick={handleOverlayClick}>
+      <div className={`confirm-modal ${isShaking ? 'shake' : ''} ${type}`}>
+        <div className="modal-header">
+          <h3>{title}</h3>
         </div>
-        
-        <div className="modal-body" style={{ marginTop: '12px', fontSize: '0.92rem', lineHeight: 1.5 }}>
-          {message}
+        <div className="modal-body">
+          <p>{message}</p>
         </div>
-
-        <div className="modal-actions" style={{ marginTop: '24px' }}>
-          <button type="button" className="btn secondary" onClick={onClose}>
-            Hủy
+        <div className="modal-footer">
+          <button className="btn secondary" onClick={onCancel}>
+            {cancelLabel}
           </button>
-          <button
-            type="button"
-            className={`btn ${isDanger ? 'danger' : 'primary'}`}
-            onClick={() => {
-              onConfirm()
-              onClose()
-            }}
-          >
-            {confirmText}
+          <button className={`btn ${type === 'danger' ? 'danger' : 'primary'}`} onClick={onConfirm}>
+            {confirmLabel}
           </button>
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -35,13 +35,43 @@ def execute_safe_query(sql: str) -> dict:
                 conn.execute(text(f"USE `{target_db}`;"))
             # --- KẾT THÚC BẢN VÁ ---
             
-            # 3. Chạy câu lệnh SQL thực tế do Gemma 4 sinh ra
-            result = conn.execute(text(sql))
+            # 3. Chạy các câu lệnh SQL. Hỗ trợ đa truy vấn tách bằng dấu ;
+            # Loại bỏ các khoảng trắng và dòng trống
+            statements = [s.strip() for s in sql.split(';') if s.strip()]
             
-            # Convert kết quả thành List of Dictionaries
-            columns = result.keys()
-            data = [dict(zip(columns, row)) for row in result.fetchall()]
-            return {"success": True, "data": data, "error": None}
+            all_data = []
+            last_error = None
+            
+            for stmt in statements:
+                try:
+                    result = conn.execute(text(stmt))
+                    # Nếu là lệnh SELECT hoặc trả về hàng
+                    if result.returns_rows:
+                        columns = result.keys()
+                        rows = [dict(zip(columns, row)) for row in result.fetchall()]
+                        all_data.append({
+                            "sql": stmt,
+                            "data": rows,
+                            "success": True
+                        })
+                except Exception as stmt_e:
+                    last_error = str(stmt_e)
+                    all_data.append({
+                        "sql": stmt,
+                        "data": [],
+                        "success": False,
+                        "error": last_error
+                    })
+
+            if not all_data and last_error:
+                return {"success": False, "error": last_error, "data": None}
+
+            return {
+                "success": True, 
+                "data": all_data[0]["data"] if len(all_data) == 1 else all_data, 
+                "multi_data": all_data if len(all_data) > 1 else None,
+                "error": None
+            }
             
     except Exception as e:
         # Bắt lỗi Syntax hoặc Column not found để feed lại cho Agent 2

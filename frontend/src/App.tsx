@@ -22,6 +22,7 @@ function chatResponseToMessage(res: ChatResponse): ChatMessage {
     sql_query: res.sql_query ?? undefined,
     raw_data: res.raw_data ?? undefined,
     chart_config: res.chart_config ?? undefined,
+    multi_results: res.multi_results ?? undefined,
   }
 }
 
@@ -291,7 +292,8 @@ export default function App() {
                   ...finalRes,
                   is_success: true,
                   needs_approval: finalRes.needs_approval,
-                  plan: finalRes.plan
+                  plan: finalRes.plan,
+                  multi_results: finalRes.multi_results
                 });
                 
                 setMessages((prev) => {
@@ -389,7 +391,8 @@ export default function App() {
               if (chunk.data.sql_query || chunk.data.raw_data || chunk.data.answer) {
                 const msg = chatResponseToMessage({
                   ...finalRes,
-                  is_success: true
+                  is_success: true,
+                  multi_results: finalRes.multi_results
                 });
                 
                 setMessages((prev) => {
@@ -542,7 +545,8 @@ export default function App() {
       <DashboardView 
         isOpen={showDashboard} 
         onClose={() => setShowDashboard(false)} 
-        version={dashboardVersion}
+        userId={status?.current_user || 'default_user'}
+        refreshVersion={dashboardVersion}
         onAddToast={addToast}
       />
 

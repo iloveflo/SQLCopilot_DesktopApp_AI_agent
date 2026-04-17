@@ -27,6 +27,7 @@ class AgentState(TypedDict):
     raw_data: Optional[List[Dict[str, Any]]]
     answer: str
     chart_config: Optional[Dict[str, Any]]
+    multi_results: Optional[List[Dict[str, Any]]] # Danh sách các khối báo cáo (sql, data, chart)
     is_cached: bool
     chat_history: Annotated[list[Dict[str, Any]], operator.add]
 
@@ -89,22 +90,43 @@ def node_generate_sql(state: AgentState):
 def node_execute(state: AgentState):
     result = execute_safe_query(state["sql_query"])
     if result["success"]:
-        return {"raw_data": result["data"], "sql_error": None}
+        # Nếu là đa truy vấn (multi_data không None)
+        if result.get("multi_data"):
+            return {
+                "multi_results": result["multi_data"], 
+                "raw_data": result["data"], # Để fallback
+                "sql_error": None
+            }
+        return {"raw_data": result["data"], "multi_results": None, "sql_error": None}
     else:
         # Nếu lỗi, tăng biến đếm retries lên 1
         current_retries = state.get("retries", 0)
         return {"sql_error": result["error"], "retries": current_retries + 1}
 
 def node_interpret(state: AgentState):
+    # 1. Phân tích kết quả
     answer = interpret_results(state["question"], state["sql_query"], state["raw_data"])
+    
+    # 2. Xử lý biểu đồ (Đơn lẻ hoặc Đa khối)
+    multi_results = state.get("multi_results")
     chart_config = None
-    if state.get("raw_data"):
-        chart_config = generate_chart_config(state["question"], state["raw_data"])
+    
+    if multi_results:
+        # Nếu có nhiều kết quả, sinh biểu đồ cho từng cái
+        for res in multi_results:
+            if res.get("data") and res.get("success"):
+                res["chart_config"] = generate_chart_config(state["question"], res["data"])
+    else:
+        # Chỉ có 1 kết quả
+        if state.get("raw_data"):
+            chart_config = generate_chart_config(state["question"], state["raw_data"])
         
+    # 3. Cache (chỉ cache câu lệnh gốc)
     if not state.get("is_cached") and state.get("sql_query"):
         from app.db.semantic_cache import set_cached_response
         set_cached_response(state["question"], state["sql_query"], state.get("plan"))
         
+    # 4. Lưu vào lịch sử chat với cấu trúc mới
     new_memory = [
         {"role": "user", "content": state["question"]},
         {
@@ -112,13 +134,15 @@ def node_interpret(state: AgentState):
             "content": answer,
             "sql_query": state.get("sql_query"),
             "raw_data": state.get("raw_data"),
-            "chart_config": chart_config
+            "chart_config": chart_config,
+            "multi_results": multi_results
         }
     ]
         
     return {
         "answer": answer,
         "chart_config": chart_config,
+        "multi_results": multi_results,
         "needs_approval": False, # Xong chu trình thì gỡ cờ duyệt
         "chat_history": new_memory
     }
@@ -234,7 +258,8 @@ def run_copilot(question: str, session_id: str = "default_session", is_approved:
         "sql_error": None,
         "raw_data": [],
         "sql_query": "",
-        "chart_config": None
+        "chart_config": None,
+        "multi_results": None
     }
     
     return sql_copilot_app.invoke(initial_state, config=config)
@@ -250,7 +275,8 @@ def stream_copilot(question: str, session_id: str = "default_session", is_approv
         "sql_error": None,
         "raw_data": [],
         "sql_query": "",
-        "chart_config": None
+        "chart_config": None,
+        "multi_results": None
     }
     
     # Sử dụng stream_mode="updates" để nhận sự kiện khi mỗi Node chạy xong

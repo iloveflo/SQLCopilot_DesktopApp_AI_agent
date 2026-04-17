@@ -51,8 +51,18 @@ export type ChatResponse = {
   sql_query?: string | null
   raw_data?: Record<string, unknown>[] | null
   chart_config?: PlotlyChartConfig | null
+  multi_results?: SubReport[] | null
   is_success: boolean
   error_message?: string | null
+}
+
+export type SubReport = {
+  title?: string
+  sql_query: string
+  raw_data: Record<string, unknown>[]
+  chart_config?: PlotlyChartConfig | null
+  success: boolean
+  error?: string
 }
 
 export type ChatMessage = {
@@ -61,6 +71,7 @@ export type ChatMessage = {
   sql_query?: string | null
   raw_data?: Record<string, unknown>[] | null
   chart_config?: PlotlyChartConfig | null
+  multi_results?: SubReport[] | null
 }
 
 export type ChatHistoryResponse = {
