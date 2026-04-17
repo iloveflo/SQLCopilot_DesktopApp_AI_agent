@@ -78,11 +78,12 @@ export function SessionSidebar({
       />
 
       <ConfirmModal
-        open={!!deletingId}
+        isOpen={!!deletingId}
         title="Xóa đoạn chat?"
         message="Hành động này sẽ xóa vĩnh viễn dữ liệu lịch sử và metadata của đoạn chat này. Bạn có chắc chắn không?"
-        confirmText="Xác nhận xóa"
-        onClose={() => setDeletingId(null)}
+        confirmLabel="Xác nhận xóa"
+        type="danger"
+        onCancel={() => setDeletingId(null)}
         onConfirm={() => deletingId && onDelete(deletingId)}
       />
     </aside>
